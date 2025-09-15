@@ -25,6 +25,8 @@
 ✅ **Simplified Scripts**: deploy.sh and destroy.sh with archiving and confirmation
 ✅ **Container Archiving**: Automatic backup of container configurations before destruction
 ✅ **User Confirmation**: Safety prompts before destructive operations
+✅ **Project Cleanup**: Removed Docker Compose files, simplified to single-file concept
+✅ **Streamlined Documentation**: Updated README for clarity and simplicity
 
 ## Notes
 
