@@ -45,7 +45,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Check if we're in the right directory
-if [[ ! -f "Dockerfile" ]] || [[ ! -f "guardian.py" ]]; then
+if [ ! -f "Dockerfile" ] || [ ! -f "guardian.py" ]; then
     print_error "Please run this script from the Guardian Lite project directory."
     print_error "Required files: Dockerfile, guardian.py"
     exit 1
@@ -67,7 +67,7 @@ fi
 print_status "🔨 Building Guardian Lite image..."
 docker build -t ${IMAGE_NAME} .
 
-if [[ $? -ne 0 ]]; then
+if [ $? -ne 0 ]; then
     print_error "Build failed!"
     exit 1
 fi
@@ -90,15 +90,15 @@ docker run -d \
   --restart unless-stopped \
   ${IMAGE_NAME}
 
-if [[ $? -eq 0 ]]; then
+if [ $? -eq 0 ]; then
     print_success "Guardian Lite is now running!"
     echo ""
     print_status "🌐 Access the GUI at: http://localhost:${PORT}"
     
     # Get the actual IP if available
-    if command -v hostname &> /dev/null; then
-        LOCAL_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")
-        if [[ "$LOCAL_IP" != "localhost" ]]; then
+    if command -v hostname > /dev/null 2>&1; then
+        LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+        if [ "$LOCAL_IP" != "localhost" ]; then
             print_status "📱 Or from another device: http://${LOCAL_IP}:${PORT}"
         fi
     fi

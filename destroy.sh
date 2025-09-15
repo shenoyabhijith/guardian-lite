@@ -51,9 +51,9 @@ echo "  • Guardian Lite cron jobs"
 echo "  • Optional: Orphaned containers and unused images"
 echo ""
 
-read -p "Are you sure you want to proceed? (y/N): " -n 1 -r
+read -p "Are you sure you want to proceed? (y/N): " confirm
 echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+if [ ! "$confirm" = "y" ] && [ ! "$confirm" = "Y" ]; then
     print_status "Operation cancelled by user."
     exit 0
 fi
@@ -69,7 +69,7 @@ fi
 
 # Function to create archive directory
 create_archive_dir() {
-    if [[ ! -d "$ARCHIVE_DIR" ]]; then
+    if [ ! -d "$ARCHIVE_DIR" ]; then
         mkdir -p "$ARCHIVE_DIR"
         print_status "Created archive directory: $ARCHIVE_DIR"
     fi
@@ -87,7 +87,7 @@ archive_container() {
     # Get container configuration
     local container_config=$(docker inspect "${container_id}" 2>/dev/null || echo "{}")
     
-    if [[ "$container_config" != "{}" ]]; then
+    if [ "$container_config" != "{}" ]; then
         # Save container configuration
         echo "$container_config" > "$archive_file"
         
@@ -126,11 +126,11 @@ cleanup_containers() {
     # Find containers matching the pattern
     local containers=$(docker ps -aq --filter "name=${container_pattern}" 2>/dev/null || true)
     
-    if [[ -n "$containers" ]]; then
+    if [ -n "$containers" ]; then
         print_status "Found containers: $(echo $containers | tr '\n' ' ')"
         
         # Create archive directory if needed
-        if [[ "$should_archive" == "true" ]]; then
+        if [ "$should_archive" == "true" ]; then
             create_archive_dir
         fi
         
@@ -142,7 +142,7 @@ cleanup_containers() {
             fi
             
             # Archive container configuration before removal
-            if [[ "$should_archive" == "true" ]]; then
+            if [ "$should_archive" = "true" ]; then
                 local container_name=$(docker inspect --format='{{.Name}}' "${container}" 2>/dev/null | sed 's/^\///' || echo "unknown_${container}")
                 archive_container "${container}" "${container_name}"
             fi
@@ -165,7 +165,7 @@ cleanup_images() {
     # Find images matching our project
     local images=$(docker images -q --filter "reference=${IMAGE_NAME}" 2>/dev/null || true)
     
-    if [[ -n "$images" ]]; then
+    if [ -n "$images" ]; then
         print_status "Found images: $(echo $images | tr '\n' ' ')"
         
         for image in $images; do
@@ -186,7 +186,7 @@ cleanup_networks() {
     # Find networks created by our project
     local networks=$(docker network ls -q --filter "name=guardian" 2>/dev/null || true)
     
-    if [[ -n "$networks" ]]; then
+    if [ -n "$networks" ]; then
         print_status "Found networks: $(echo $networks | tr '\n' ' ')"
         
         for network in $networks; do
@@ -207,7 +207,7 @@ cleanup_volumes() {
     # Find volumes created by our project
     local volumes=$(docker volume ls -q --filter "name=guardian" 2>/dev/null || true)
     
-    if [[ -n "$volumes" ]]; then
+    if [ -n "$volumes" ]; then
         print_status "Found volumes: $(echo $volumes | tr '\n' ' ')"
         
         for volume in $volumes; do
@@ -234,7 +234,7 @@ cleanup_cron() {
     # Get current crontab
     local current_cron=$(crontab -l 2>/dev/null || echo "")
     
-    if [[ -n "$current_cron" ]] && echo "$current_cron" | grep -q "guardian"; then
+    if [ -n "$current_cron" ] && echo "$current_cron" | grep -q "guardian"; then
         print_status "Found Guardian Lite cron jobs"
         
         # Remove guardian-related cron entries
@@ -248,7 +248,7 @@ cleanup_cron() {
 
 # Function to list archived containers
 list_archives() {
-    if [[ -d "$ARCHIVE_DIR" ]] && [[ -n "$(ls -A "$ARCHIVE_DIR" 2>/dev/null)" ]]; then
+    if [ -d "$ARCHIVE_DIR" ] && [ -n "$(ls -A "$ARCHIVE_DIR" 2>/dev/null)" ]; then
         print_status "📦 Archived containers:"
         ls -la "$ARCHIVE_DIR"/*.json 2>/dev/null | while read -r line; do
             local file=$(echo "$line" | awk '{print $NF}')
@@ -287,11 +287,11 @@ cleanup_cron
 print_status "🔍 Looking for orphaned containers..."
 orphaned=$(docker ps -aq --filter "dangling=true" 2>/dev/null || true)
 
-if [[ -n "$orphaned" ]]; then
+if [ -n "$orphaned" ]; then
     print_warning "Found orphaned containers: $(echo $orphaned | tr '\n' ' ')"
-    read -p "Do you want to remove orphaned containers? (y/N): " -n 1 -r
+    read -p "Do you want to remove orphaned containers? (y/N): " confirm
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         for container in $orphaned; do
             print_status "Removing orphaned container: ${container}"
             docker rm ${container} > /dev/null 2>&1 || true
@@ -308,11 +308,11 @@ fi
 print_status "🔍 Looking for unused images..."
 unused_images=$(docker images -f "dangling=true" -q 2>/dev/null || true)
 
-if [[ -n "$unused_images" ]]; then
+if [ -n "$unused_images" ]; then
     print_warning "Found unused images: $(echo $unused_images | tr '\n' ' ')"
-    read -p "Do you want to remove unused images? (y/N): " -n 1 -r
+    read -p "Do you want to remove unused images? (y/N): " confirm
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         for image in $unused_images; do
             print_status "Removing unused image: ${image}"
             docker rmi ${image} > /dev/null 2>&1 || true
