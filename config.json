@@ -1,0 +1,24 @@
+{
+  "telegram_bot_token": "",
+  "telegram_chat_id": "",
+  "global": {
+    "cleanup_unused_images": true,
+    "cleanup_keep_last_n": 3,
+    "dry_run": false,
+    "check_interval_minutes": 60
+  },
+  "containers": [
+    {
+      "name": "my-nginx",
+      "image": "nginx:latest",
+      "auto_update": true,
+      "health_check_url": "http://localhost:80",
+      "rollback_on_failure": true,
+      "enabled": true
+    }
+  ],
+  "cron": {
+    "enabled": true,
+    "schedule": "0 */1 * * *"
+  }
+}

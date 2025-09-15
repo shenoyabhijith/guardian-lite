@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Guardian Lite</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Guardian Lite 🐳</h1>
+        <p>Lightweight container auto-updater for your Pi.</p>
+
+        <div class="section">
+            <h2>🔧 Telegram Settings</h2>
+            <input id="bot_token" placeholder="Bot Token" value="{{ config.telegram_bot_token }}">
+            <input id="chat_id" placeholder="Chat ID" value="{{ config.telegram_chat_id }}">
+        </div>
+
+        <div class="section">
+            <h2>♻️ Global Settings</h2>
+            <label>
+                <input type="checkbox" id="cleanup" {% if config.global.cleanup_unused_images %}checked{% endif %}>
+                Auto cleanup unused images
+            </label>
+            <input type="number" id="keep_last" placeholder="Keep last N images" value="{{ config.global.cleanup_keep_last_n }}">
+
+            <label>
+                <input type="checkbox" id="dry_run" {% if config.global.dry_run %}checked{% endif %}>
+                Dry run (no actual changes)
+            </label>
+
+            <label>
+                Check Interval (minutes): <input type="number" id="interval" value="{{ config.global.check_interval_minutes }}">
+            </label>
+        </div>
+
+        <div class="section">
+            <h2>⏱️ Cron Scheduler</h2>
+            <label>
+                <input type="checkbox" id="cron_enabled" {% if config.cron.enabled %}checked{% endif %}>
+                Enable automatic scheduling
+            </label>
+            <input id="cron_schedule" placeholder="Cron expression (e.g., 0 */1 * * *)" value="{{ config.cron.schedule }}">
+            <small>Leave default for hourly. <a href="https://crontab.guru" target="_blank">Help</a></small>
+        </div>
+
+        <div class="section">
+            <h2>🐳 Containers</h2>
+            <div id="containers">
+                {% for c in config.containers %}
+                <div class="container-item">
+                    <input class="name" placeholder="Container Name" value="{{ c.name }}">
+                    <input class="image" placeholder="Image (e.g., nginx:latest)" value="{{ c.image }}">
+                    <input class="health" placeholder="Health Check URL (optional)" value="{{ c.health_check_url }}">
+                    <label><input type="checkbox" class="auto_update" {% if c.auto_update %}checked{% endif %}> Auto Update</label>
+                    <label><input type="checkbox" class="rollback" {% if c.rollback_on_failure %}checked{% endif %}> Rollback on Failure</label>
+                    <label><input type="checkbox" class="enabled" {% if c.enabled %}checked{% endif %}> Enabled</label>
+                    <button class="remove">🗑️</button>
+                </div>
+                {% endfor %}
+            </div>
+            <button id="add-container">➕ Add Container</button>
+        </div>
+
+        <div class="actions">
+            <button id="save">💾 Save & Apply</button>
+            <button id="run-now">🚀 Run Update Now</button>
+        </div>
+
+        <div class="section">
+            <h2>📜 Recent Logs</h2>
+            <pre id="logs">Loading...</pre>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
