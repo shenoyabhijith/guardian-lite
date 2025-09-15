@@ -14,7 +14,7 @@
 - 🔄 **Auto-update + rollback** - Smart container management with automatic rollback on failure
 - 🍓 **Raspberry Pi compatible** - ARM-optimized Docker image
 - ⚡ **Zero bloat** - Just Flask + vanilla JS/CSS (no heavy frameworks)
-- ⏰ **Cron scheduling** - Automatic updates with customizable schedules
+- ⏰ **GUI-based Cron scheduling** - User-friendly interface with automatic expression generation
 - 🩺 **Health checks** - Optional URL monitoring for container health
 - 🧹 **Cleanup** - Automatic unused image removal
 - 📊 **Live logs** - Real-time log viewing in the web interface
@@ -70,6 +70,18 @@ The GUI allows you to configure:
 - **Global Settings**: Cleanup options, dry run mode, check intervals
 - **Cron Scheduler**: Automatic update scheduling
 - **Containers**: Add/remove containers to monitor and update
+
+## ⏰ GUI-Based Cron Scheduling
+
+The GUI provides an intuitive interface for scheduling updates:
+
+- **Every Hour**: Simple hourly updates
+- **Daily**: Choose specific time of day (12:00 AM - 11:00 PM)
+- **Weekly**: Select day of week and time
+- **Custom Interval**: Set custom minutes (1-59 minutes)
+- **Manual**: Advanced users can still enter cron expressions
+- **Real-time Preview**: See generated cron expression as you configure
+- **Automatic Installation**: Cron jobs are automatically installed/removed
 
 ## 📱 Telegram Setup
 
