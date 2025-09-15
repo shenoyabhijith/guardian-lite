@@ -21,7 +21,23 @@
 
 ## 🚀 Quick Start
 
-### 1. Clone and Deploy
+### Option 1: Docker Compose (Recommended)
+
+```bash
+git clone https://github.com/shenoyabhijith/guardian-lite.git
+cd guardian-lite
+
+# Development mode (builds from source)
+./deploy-compose.sh
+
+# Production mode (uses pre-built image)
+./deploy-compose.sh -e prod
+
+# Custom compose file
+./deploy-compose.sh -f docker-compose.custom.yml
+```
+
+### Option 2: Direct Docker
 
 ```bash
 git clone https://github.com/shenoyabhijith/guardian-lite.git
@@ -29,7 +45,7 @@ cd guardian-lite
 ./deploy.sh
 ```
 
-### 2. Access GUI
+### Access GUI
 
 Open your browser and go to: `http://your-pi-ip:8080`
 
@@ -69,6 +85,28 @@ Guardian Lite runs in Docker and manages other Docker containers. It requires:
 - Access to Docker socket (`/var/run/docker.sock`)
 - Persistent volume for configuration and logs
 - Network access for Telegram API and health checks
+
+### Docker Compose Files
+
+- `docker-compose.dev.yml` - Development mode (builds from source)
+- `docker-compose.prod.yml` - Production mode (uses pre-built image)
+- `docker-compose.yml` - Standard mode (uses pre-built image)
+
+### Manual Docker Compose Commands
+
+```bash
+# Development
+docker compose -f docker-compose.dev.yml up -d
+
+# Production
+docker compose -f docker-compose.prod.yml up -d
+
+# View logs
+docker compose -f docker-compose.dev.yml logs -f
+
+# Stop
+docker compose -f docker-compose.dev.yml down
+```
 
 ## 📊 Monitoring
 

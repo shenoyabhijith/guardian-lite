@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  guardian-lite:
+    build: .
+    container_name: guardian-lite
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount current directory for persistent config and logs
+      - ./config.json:/app/config.json
+      - ./state:/app/state
+      - ./logs:/app/logs
+    environment:
+      - TZ=UTC
+      - FLASK_ENV=production
+    restart: unless-stopped
+    networks:
+      - guardian-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.guardian-lite.description=Container Auto-Updater"
+      - "com.guardian-lite.version=1.0.0"
+
+networks:
+  guardian-network:
+    driver: bridge

@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  guardian-lite:
+    image: guardian-lite:latest
+    container_name: guardian-lite
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount current directory for persistent config and logs
+      - ./config.json:/app/config.json
+      - ./state:/app/state
+      - ./logs:/app/logs
+    environment:
+      - TZ=UTC
+      - FLASK_ENV=production
+    restart: unless-stopped
+    networks:
+      - guardian-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.guardian-lite.description=Container Auto-Updater"
+      - "com.guardian-lite.version=1.0.0"
+      - "traefik.enable=true"
+      - "traefik.http.routers.guardian.rule=Host(`guardian.local`)"
+      - "traefik.http.routers.guardian.tls=true"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
+networks:
+  guardian-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: guardian-br
