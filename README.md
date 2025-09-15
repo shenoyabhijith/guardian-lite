@@ -19,9 +19,29 @@
 - 🧹 **Cleanup** - Automatic unused image removal
 - 📊 **Live logs** - Real-time log viewing in the web interface
 
-## 🚀 Quick Start
+## 📁 Project Structure
 
-### Simple Deploy/Destroy (Recommended)
+```
+guardian-lite/
+├── deploy.sh              # Simple deployment script
+├── destroy.sh             # Cleanup script with archiving
+├── Dockerfile             # Container definition
+├── requirements.txt        # Python dependencies
+├── guardian.py            # Core update/rollback logic
+├── web.py                 # Flask GUI server
+├── config.json            # Configuration file
+├── static/
+│   ├── style.css          # GUI styles
+│   └── script.js          # GUI functionality
+├── templates/
+│   └── index.html         # Web interface
+├── state/                 # Container backups for rollback
+├── logs/                  # Application logs
+├── archives/              # Archived container configurations
+└── README.md
+```
+
+## 🚀 Quick Start
 
 ```bash
 git clone https://github.com/shenoyabhijith/guardian-lite.git
@@ -32,19 +52,6 @@ cd guardian-lite
 
 # Destroy and cleanup everything
 ./destroy.sh
-```
-
-### Docker Compose Options
-
-```bash
-# Development mode (builds from source)
-./deploy-compose.sh
-
-# Production mode (uses pre-built image)
-./deploy-compose.sh -e prod
-
-# Custom compose file
-./deploy-compose.sh -f docker-compose.custom.yml
 ```
 
 ### Access GUI
@@ -100,26 +107,20 @@ Guardian Lite runs in Docker and manages other Docker containers. It requires:
 - Persistent volume for configuration and logs
 - Network access for Telegram API and health checks
 
-### Docker Compose Files
-
-- `docker-compose.dev.yml` - Development mode (builds from source)
-- `docker-compose.prod.yml` - Production mode (uses pre-built image)
-- `docker-compose.yml` - Standard mode (uses pre-built image)
-
-### Manual Docker Compose Commands
+### Manual Docker Commands
 
 ```bash
-# Development
-docker compose -f docker-compose.dev.yml up -d
+# Build image
+docker build -t guardian-lite .
 
-# Production
-docker compose -f docker-compose.prod.yml up -d
+# Run container
+docker run -d --name guardian -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock guardian-lite
 
 # View logs
-docker compose -f docker-compose.dev.yml logs -f
+docker logs guardian
 
-# Stop
-docker compose -f docker-compose.dev.yml down
+# Stop container
+docker stop guardian && docker rm guardian
 ```
 
 ## 📊 Monitoring
