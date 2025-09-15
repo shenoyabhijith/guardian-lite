@@ -21,12 +21,22 @@
 
 ## 🚀 Quick Start
 
-### Option 1: Docker Compose (Recommended)
+### Simple Deploy/Destroy (Recommended)
 
 ```bash
 git clone https://github.com/shenoyabhijith/guardian-lite.git
 cd guardian-lite
 
+# Deploy Guardian Lite
+./deploy.sh
+
+# Destroy and cleanup everything
+./destroy.sh
+```
+
+### Docker Compose Options
+
+```bash
 # Development mode (builds from source)
 ./deploy-compose.sh
 
@@ -35,14 +45,6 @@ cd guardian-lite
 
 # Custom compose file
 ./deploy-compose.sh -f docker-compose.custom.yml
-```
-
-### Option 2: Direct Docker
-
-```bash
-git clone https://github.com/shenoyabhijith/guardian-lite.git
-cd guardian-lite
-./deploy.sh
 ```
 
 ### Access GUI
