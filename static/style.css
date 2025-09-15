@@ -81,3 +81,69 @@ button:hover {
     overflow: auto;
     max-height: 300px;
 }
+
+/* Cron Scheduler Styles */
+.cron-option {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.cron-option label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: normal;
+    margin: 0;
+}
+
+.cron-option input[type="radio"] {
+    width: auto;
+    margin: 0;
+}
+
+.cron-option select {
+    width: auto;
+    padding: 5px 8px;
+    margin: 0 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.cron-option input[type="number"] {
+    width: 60px;
+    padding: 5px 8px;
+    margin: 0 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.cron-option input[type="text"] {
+    width: 200px;
+    padding: 5px 8px;
+    margin: 0 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+#cron-preview {
+    background: #e8f4fd;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+#cron-preview strong {
+    color: #0c5460;
+}
+
+#cron-expression {
+    color: #155724;
+    font-weight: bold;
+}

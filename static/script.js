@@ -1,5 +1,63 @@
 document.addEventListener('DOMContentLoaded', function() {
 
+    // Cron generation functions
+    function generateCronExpression() {
+        const frequency = document.querySelector('input[name="cron_frequency"]:checked').value;
+        
+        switch(frequency) {
+            case 'hourly':
+                return '0 */1 * * *';
+            case 'daily':
+                const hour = document.getElementById('daily_hour').value;
+                return `0 ${hour} * * *`;
+            case 'weekly':
+                const day = document.getElementById('weekly_day').value;
+                const weekHour = document.getElementById('weekly_hour').value;
+                return `0 ${weekHour} * * ${day}`;
+            case 'custom':
+                const minutes = document.getElementById('custom_minutes').value;
+                return `*/${minutes} * * * *`;
+            case 'manual':
+                return document.getElementById('manual_cron').value || '0 */1 * * *';
+            default:
+                return '0 */1 * * *';
+        }
+    }
+
+    function updateCronPreview() {
+        const cronExpression = generateCronExpression();
+        document.getElementById('cron-expression').textContent = cronExpression;
+    }
+
+    function parseExistingCron(cronExpression) {
+        if (!cronExpression) return 'hourly';
+        
+        // Parse common cron patterns
+        if (cronExpression === '0 */1 * * *') return 'hourly';
+        if (cronExpression.startsWith('0 ') && cronExpression.endsWith(' * * *')) {
+            const hour = cronExpression.split(' ')[1];
+            document.getElementById('daily_hour').value = hour;
+            return 'daily';
+        }
+        if (cronExpression.startsWith('0 ') && cronExpression.includes(' * * ')) {
+            const parts = cronExpression.split(' ');
+            const hour = parts[1];
+            const day = parts[4];
+            document.getElementById('weekly_hour').value = hour;
+            document.getElementById('weekly_day').value = day;
+            return 'weekly';
+        }
+        if (cronExpression.startsWith('*/') && cronExpression.endsWith(' * * * *')) {
+            const minutes = cronExpression.split('*/')[1].split(' ')[0];
+            document.getElementById('custom_minutes').value = minutes;
+            return 'custom';
+        }
+        
+        // If none match, set as manual
+        document.getElementById('manual_cron').value = cronExpression;
+        return 'manual';
+    }
+
     function save() {
         const config = {
             telegram_bot_token: document.getElementById('bot_token').value,
@@ -12,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             cron: {
                 enabled: document.getElementById('cron_enabled').checked,
-                schedule: document.getElementById('cron_schedule').value
+                schedule: generateCronExpression()
             },
             containers: []
         };
@@ -68,6 +126,31 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.closest('.container-item').remove();
         });
     });
+
+    // Initialize cron scheduler
+    function initializeCronScheduler() {
+        // Parse existing cron from config and set appropriate radio button
+        const existingCron = document.getElementById('cron-expression').textContent;
+        const frequency = parseExistingCron(existingCron);
+        document.querySelector(`input[name="cron_frequency"][value="${frequency}"]`).checked = true;
+        
+        // Add event listeners for cron changes
+        document.querySelectorAll('input[name="cron_frequency"]').forEach(radio => {
+            radio.addEventListener('change', updateCronPreview);
+        });
+        
+        document.getElementById('daily_hour').addEventListener('change', updateCronPreview);
+        document.getElementById('weekly_day').addEventListener('change', updateCronPreview);
+        document.getElementById('weekly_hour').addEventListener('change', updateCronPreview);
+        document.getElementById('custom_minutes').addEventListener('change', updateCronPreview);
+        document.getElementById('manual_cron').addEventListener('input', updateCronPreview);
+        
+        // Initial preview update
+        updateCronPreview();
+    }
+
+    // Initialize cron scheduler on page load
+    initializeCronScheduler();
 
     // Live log viewer
     function loadLogs() {
