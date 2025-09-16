@@ -249,4 +249,4 @@ def setup_cron(cron_config):
     subprocess.run("crontab -", shell=True, input=cron_text, text=True)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    app.run(host='0.0.0.0', port=3000, debug=False)
