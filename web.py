@@ -77,44 +77,44 @@ def get_containers():
     # For demo purposes, return the actual containers you showed me
     demo_containers = [
         {
-            'id': 'e7ab296cb2f8',
+            'id': '0791518055e1',
             'name': 'guardian',
             'image': 'guardian-lite',
-            'status': 'Up About a minute',
+            'status': 'Up 31 seconds',
             'ports': ['8080:8080'],
-            'created': '2025-09-15T23:24:00'
+            'created': '2025-09-15T23:30:00'
         },
         {
             'id': 'bb4be3ece02c',
             'name': 'buildx_buildkit_quizx0',
             'image': 'moby/buildkit:buildx-stable-1',
-            'status': 'Up 4 minutes',
+            'status': 'Up 8 minutes',
             'ports': [],
-            'created': '2025-09-15T23:20:00'
+            'created': '2025-09-15T23:22:00'
         },
         {
             'id': '51461a2199f8',
             'name': 'postgres-test',
             'image': 'postgres:latest',
-            'status': 'Up 9 minutes',
+            'status': 'Up 13 minutes',
             'ports': ['5432:5432'],
-            'created': '2025-09-15T23:15:00'
+            'created': '2025-09-15T23:17:00'
         },
         {
             'id': 'd2e914763096',
             'name': 'redis-test',
             'image': 'redis:latest',
-            'status': 'Up 13 minutes',
+            'status': 'Up 16 minutes',
             'ports': ['6379:6379'],
-            'created': '2025-09-15T23:11:00'
+            'created': '2025-09-15T23:14:00'
         },
         {
             'id': 'e60a334e09a3',
             'name': 'nginx-test',
             'image': 'nginx:latest',
-            'status': 'Up 13 minutes',
+            'status': 'Up 17 minutes',
             'ports': ['8081:80'],
-            'created': '2025-09-15T23:11:00'
+            'created': '2025-09-15T23:13:00'
         }
     ]
     
