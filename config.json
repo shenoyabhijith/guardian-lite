@@ -7,16 +7,7 @@
     "dry_run": false,
     "check_interval_minutes": 60
   },
-  "containers": [
-    {
-      "name": "my-nginx",
-      "image": "nginx:latest",
-      "auto_update": true,
-      "health_check_url": "",
-      "rollback_on_failure": true,
-      "enabled": true
-    }
-  ],
+  "containers": [],
   "cron": {
     "enabled": true,
     "schedule": "0 */1 * * *"
