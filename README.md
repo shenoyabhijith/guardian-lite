@@ -21,6 +21,9 @@
 - 🔧 **Robust Docker integration** - Multiple fallback methods for Docker operations
 - 🎨 **Consistent UI** - Beautiful, modern interface with smooth animations
 - 🚀 **Container management** - Add/remove containers with visual feedback
+- 🔍 **External update checking** - Docker Hub API integration to check for image updates
+- 📈 **Version comparison** - Display current vs latest available image versions
+- 🏷️ **Update indicators** - Visual badges showing when updates are available
 
 ## 📁 Project Structure
 
@@ -140,8 +143,42 @@ docker stop guardian && docker rm guardian
 - **Enhanced UI**: Apple Music-inspired design with consistent theming
 - **Improved Health Checks**: Retry mechanism with proper timing for container startup
 - **Clear Logs Functionality**: Web interface now includes log clearing capability
-- **Port Optimization**: Updated to use port 3000 to avoid conflicts
+- **Port Optimization**: Updated to use port 8082 to avoid conflicts
 - **Better Error Handling**: Comprehensive error handling throughout the application
+- **External Update Checking**: Docker Hub API integration for real-time update detection
+- **Version Comparison**: Visual display of current vs latest available image versions
+- **Update Indicators**: Animated badges showing when container updates are available
+
+## 🔍 External Update Checking
+
+Guardian Lite now includes real-time container image update detection using Docker Hub API:
+
+### **How It Works:**
+1. **API Integration**: Queries Docker Hub v2 API for latest image tags
+2. **Version Comparison**: Compares current container tags with latest available
+3. **Visual Indicators**: Shows update badges and version information
+4. **Real-time Updates**: Checks for updates every time containers are loaded
+
+### **Features:**
+- **Update Badges**: Orange pulsing badges when updates are available
+- **Version Display**: Shows current vs latest version tags
+- **Tag Information**: Displays available tags with timestamps
+- **Error Handling**: Graceful fallback when API calls fail
+- **Performance**: Efficient caching and timeout handling
+
+### **Supported Registries:**
+- ✅ Docker Hub (docker.io) - Full support
+- 🔄 Other registries - Planned for future releases
+
+### **Example Display:**
+```
+Container: nginx-web
+Image: nginx:latest
+Status: Up 2 hours
+Update Available: ✅
+Current: latest
+Latest: stable-perl
+```
 
 ## 🤝 Contributing
 
