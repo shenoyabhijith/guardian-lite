@@ -11,10 +11,26 @@ CONFIG_PATH = 'config.json'
 
 # Initialize Docker client
 try:
-    # Try to connect to Docker daemon via socket
-    docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-    docker_client.ping()
-    print("Docker client initialized successfully")
+    # Try different connection methods
+    docker_client = None
+    
+    # Method 1: Try unix socket
+    try:
+        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        docker_client.ping()
+        print("Docker client initialized via unix socket")
+    except Exception as e1:
+        print(f"Unix socket failed: {e1}")
+        
+        # Method 2: Try from_env
+        try:
+            docker_client = docker.from_env()
+            docker_client.ping()
+            print("Docker client initialized via from_env")
+        except Exception as e2:
+            print(f"from_env failed: {e2}")
+            docker_client = None
+            
 except Exception as e:
     print(f"Docker client initialization failed: {e}")
     docker_client = None
@@ -53,6 +69,7 @@ def get_containers():
     # Try Docker Python client first
     if docker_client:
         try:
+            print("Attempting to get containers from Docker client...")
             for container in docker_client.containers.list():
                 # Get port information
                 ports = []
@@ -70,55 +87,48 @@ def get_containers():
                     'ports': ports,
                     'created': container.attrs['Created'][:19]
                 })
+            print(f"Successfully retrieved {len(containers)} containers from Docker client")
             return jsonify({"containers": containers})
         except Exception as e:
             print(f"Docker client error: {e}")
     
-    # For demo purposes, return the actual containers you showed me
-    demo_containers = [
-        {
-            'id': '0791518055e1',
-            'name': 'guardian',
-            'image': 'guardian-lite',
-            'status': 'Up 31 seconds',
-            'ports': ['8080:8080'],
-            'created': '2025-09-15T23:30:00'
-        },
-        {
-            'id': 'bb4be3ece02c',
-            'name': 'buildx_buildkit_quizx0',
-            'image': 'moby/buildkit:buildx-stable-1',
-            'status': 'Up 8 minutes',
-            'ports': [],
-            'created': '2025-09-15T23:22:00'
-        },
-        {
-            'id': '51461a2199f8',
-            'name': 'postgres-test',
-            'image': 'postgres:latest',
-            'status': 'Up 13 minutes',
-            'ports': ['5432:5432'],
-            'created': '2025-09-15T23:17:00'
-        },
-        {
-            'id': 'd2e914763096',
-            'name': 'redis-test',
-            'image': 'redis:latest',
-            'status': 'Up 16 minutes',
-            'ports': ['6379:6379'],
-            'created': '2025-09-15T23:14:00'
-        },
-        {
-            'id': 'e60a334e09a3',
-            'name': 'nginx-test',
-            'image': 'nginx:latest',
-            'status': 'Up 17 minutes',
-            'ports': ['8081:80'],
-            'created': '2025-09-15T23:13:00'
-        }
-    ]
+    # Fallback: Try subprocess method
+    try:
+        print("Trying subprocess method...")
+        result = subprocess.run(['docker', 'ps', '--format', 'json'], 
+                              capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            for line in result.stdout.strip().split('\n'):
+                if line:
+                    try:
+                        container_data = json.loads(line)
+                        # Parse ports
+                        ports = []
+                        if container_data.get('Ports'):
+                            for port in container_data['Ports'].split(','):
+                                if port.strip() and '->' in port:
+                                    ports.append(port.strip())
+                        
+                        containers.append({
+                            'id': container_data['ID'][:12],
+                            'name': container_data['Names'],
+                            'image': container_data['Image'],
+                            'status': container_data['Status'],
+                            'ports': ports,
+                            'created': container_data['CreatedAt'][:19]
+                        })
+                    except json.JSONDecodeError:
+                        continue
+            
+            if containers:
+                print(f"Successfully retrieved {len(containers)} containers via subprocess")
+                return jsonify({"containers": containers})
+    except Exception as e:
+        print(f"Subprocess method failed: {e}")
     
-    return jsonify({"containers": demo_containers})
+    # Final fallback: Return empty list
+    print("All methods failed, returning empty container list")
+    return jsonify({"containers": []})
 
 @app.route('/status')
 def status():
