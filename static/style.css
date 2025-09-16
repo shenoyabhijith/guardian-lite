@@ -261,17 +261,22 @@ input[type="checkbox"] {
     background: #e74c3c;
     color: white;
     border: none;
-    border-radius: 6px;
-    padding: 8px 12px;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
     cursor: pointer;
     font-size: 12px;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.2s ease;
+    padding: 0;
+    line-height: 1;
 }
 
 .selected-item .remove-selected:hover {
     background: #c0392b;
-    transform: translateY(-1px);
+    transform: scale(1.1);
 }
 
 .no-containers {

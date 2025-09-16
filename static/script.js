@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     Enabled
                 </label>
             </div>
-            <button class="remove-selected" onclick="removeContainerFromMonitoring('${name}')">🗑️ Remove</button>
+            <button class="remove-selected" onclick="removeContainerFromMonitoring('${name}')">×</button>
         `;
         
         selectedList.appendChild(selectedItem);
