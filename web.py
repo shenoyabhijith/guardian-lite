@@ -189,6 +189,43 @@ def status():
         "timestamp": datetime.now().isoformat()
     })
 
+@app.route('/clear-logs', methods=['POST'])
+def clear_logs():
+    """Clear all log files"""
+    try:
+        cleared_files = []
+        
+        # Clear guardian logs
+        try:
+            with open('logs/guardian.log', 'w') as f:
+                f.write('')
+            cleared_files.append('guardian.log')
+        except Exception as e:
+            print(f"Failed to clear guardian.log: {e}")
+        
+        # Clear cron logs if they exist
+        try:
+            if os.path.exists('logs/cron.log'):
+                with open('logs/cron.log', 'w') as f:
+                    f.write('')
+                cleared_files.append('cron.log')
+        except Exception as e:
+            print(f"Failed to clear cron.log: {e}")
+        
+        # Add a new entry indicating logs were cleared
+        try:
+            with open('logs/guardian.log', 'a') as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - INFO - Logs cleared by user\n")
+        except Exception as e:
+            print(f"Failed to add clear log entry: {e}")
+        
+        return jsonify({
+            'status': 'success', 
+            'message': f'Logs cleared successfully. Cleared files: {", ".join(cleared_files)}'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 def setup_cron(cron_config):
     if not cron_config.get('enabled', False):
         # Remove existing cron

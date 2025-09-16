@@ -1,421 +1,301 @@
-document.addEventListener('DOMContentLoaded', function() {
-    let selectedContainers = new Set();
-    let allContainers = [];
-    let filteredContainers = [];
-    let currentPage = 1;
-    const containersPerPage = 6;
-
-    // Cron generation functions
-    function generateCronExpression() {
-        const frequency = document.querySelector('input[name="cron_frequency"]:checked').value;
-        
-        switch(frequency) {
-            case 'hourly':
-                return '0 */1 * * *';
-            case 'daily':
-                const hour = document.getElementById('daily_hour').value;
-                return `0 ${hour} * * *`;
-            case 'weekly':
-                const day = document.getElementById('weekly_day').value;
-                const weekHour = document.getElementById('weekly_hour').value;
-                return `0 ${weekHour} * * ${day}`;
-            case 'custom':
-                const minutes = document.getElementById('custom_minutes').value;
-                return `*/${minutes} * * * *`;
-            case 'manual':
-                return document.getElementById('manual_cron').value || '0 */1 * * *';
-            default:
-                return '0 */1 * * *';
-        }
+// Guardian Lite - Apple Music Style
+class GuardianLite {
+    constructor() {
+        this.containers = [];
+        this.selectedContainers = new Set();
+        this.init();
     }
 
-    function updateCronPreview() {
-        const cronExpression = generateCronExpression();
-        document.getElementById('cron-expression').textContent = cronExpression;
+    init() {
+        this.setupNavigation();
+        this.loadContainers();
+        this.setupEventListeners();
+        this.startPolling();
+        this.updateStats();
     }
 
-    function parseExistingCron(cronExpression) {
-        if (!cronExpression) return 'hourly';
-        
-        // Parse common cron patterns
-        if (cronExpression === '0 */1 * * *') return 'hourly';
-        if (cronExpression.startsWith('0 ') && cronExpression.endsWith(' * * *')) {
-            const hour = cronExpression.split(' ')[1];
-            document.getElementById('daily_hour').value = hour;
-            return 'daily';
-        }
-        if (cronExpression.startsWith('0 ') && cronExpression.includes(' * * ')) {
-            const parts = cronExpression.split(' ');
-            const hour = parts[1];
-            const day = parts[4];
-            document.getElementById('weekly_hour').value = hour;
-            document.getElementById('weekly_day').value = day;
-            return 'weekly';
-        }
-        if (cronExpression.startsWith('*/') && cronExpression.endsWith(' * * * *')) {
-            const minutes = cronExpression.split('*/')[1].split(' ')[0];
-            document.getElementById('custom_minutes').value = minutes;
-            return 'custom';
-        }
-        
-        // If none match, set as manual
-        document.getElementById('manual_cron').value = cronExpression;
-        return 'manual';
-    }
-
-    // Container Discovery Functions
-    function loadRunningContainers() {
-        console.log('🔄 Loading running containers...');
-        const container = document.getElementById('running-containers');
-        container.innerHTML = '<div class="loading">Loading containers...</div>';
-        
-        fetch('/containers')
-            .then(response => {
-                console.log('📡 Response received:', response.status, response.statusText);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('📦 Data received:', data);
-                if (data.error) {
-                    container.innerHTML = `<div class="loading">Error: ${data.error}</div>`;
-                    return;
-                }
+    setupNavigation() {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const section = item.dataset.section;
+                this.showSection(section);
                 
-                allContainers = data.containers || [];
-                filteredContainers = [...allContainers];
-                currentPage = 1;
-                
-                console.log('✅ Processed containers:', allContainers.length, allContainers);
-                
-                if (allContainers.length === 0) {
-                    container.innerHTML = '<div class="loading">No running containers found</div>';
-                    document.getElementById('container-pagination').style.display = 'none';
-                    return;
-                }
-                
-                renderContainers();
-                updatePagination();
-                console.log('🎨 Containers rendered successfully');
-            })
-            .catch(error => {
-                console.error('❌ Error loading containers:', error);
-                container.innerHTML = `<div class="loading">Error loading containers: ${error.message}</div>`;
+                // Update active state
+                document.querySelectorAll('.nav-item').forEach(nav => {
+                    nav.classList.remove('active');
+                });
+                item.classList.add('active');
             });
+        });
     }
 
-    function renderContainers() {
-        console.log('🎨 Rendering containers...');
-        const container = document.getElementById('running-containers');
-        const startIndex = (currentPage - 1) * containersPerPage;
-        const endIndex = startIndex + containersPerPage;
-        const pageContainers = filteredContainers.slice(startIndex, endIndex);
-        
-        console.log('📊 Render stats:', {
-            totalContainers: filteredContainers.length,
-            currentPage: currentPage,
-            containersPerPage: containersPerPage,
-            startIndex: startIndex,
-            endIndex: endIndex,
-            pageContainers: pageContainers.length
+    showSection(sectionName) {
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
         });
         
-        if (pageContainers.length === 0) {
-            container.innerHTML = '<div class="loading">No containers match your search</div>';
-            return;
+        const targetSection = document.getElementById(`${sectionName}-section`);
+        if (targetSection) {
+            targetSection.classList.add('active');
         }
-        
-        const html = pageContainers.map(container => `
-            <div class="container-card" data-name="${container.name}">
+    }
+
+    async loadContainers() {
+        try {
+            const response = await fetch('/containers');
+            const data = await response.json();
+            
+            if (data.containers) {
+                this.containers = data.containers;
+                this.renderContainers();
+                this.updateStats();
+            }
+        } catch (error) {
+            console.error('Failed to load containers:', error);
+            this.showNotification('Failed to load containers', 'error');
+        }
+    }
+
+    renderContainers() {
+        const container = document.getElementById('available-containers');
+        if (!container) return;
+
+        container.innerHTML = this.containers.map(c => `
+            <div class="container-card" data-name="${c.name}">
                 <div class="container-header">
-                    <div class="container-name">${container.name}</div>
-                    <div class="container-status">${container.status}</div>
+                    <h4>${c.name}</h4>
+                    <span class="status-badge ${c.status.includes('Up') ? 'success' : 'warning'}">
+                        ${c.status}
+                    </span>
                 </div>
-                <div class="container-details">
-                    <div><strong>Image:</strong> ${container.image}</div>
-                    <div><strong>ID:</strong> ${container.id}</div>
-                    <div><strong>Created:</strong> ${container.created}</div>
-                    <div><strong>Ports:</strong> ${container.ports.join(', ') || 'None'}</div>
+                <div class="container-info">
+                    <p class="image-name">${c.image}</p>
+                    <p class="container-id">${c.id.substring(0, 12)}</p>
                 </div>
-                <button class="add-btn" onclick="addContainerToMonitoring('${container.name}', '${container.image}')">+</button>
+                <button class="add-container-btn" onclick="guardian.addContainer('${c.name}', '${c.image}')">
+                    <i class="ph-plus"></i> Add to Monitor
+                </button>
             </div>
         `).join('');
-        
-        container.innerHTML = html;
-        console.log('✅ HTML rendered:', html.length, 'characters');
     }
 
-    function updatePagination() {
-        const totalPages = Math.ceil(filteredContainers.length / containersPerPage);
-        const pagination = document.getElementById('container-pagination');
-        const prevBtn = document.getElementById('prev-page');
-        const nextBtn = document.getElementById('next-page');
-        const pageInfo = document.getElementById('page-info');
-        
-        if (totalPages <= 1) {
-            pagination.style.display = 'none';
+    addContainer(name, image) {
+        if (this.selectedContainers.has(name)) {
+            this.showNotification('Container already monitored', 'warning');
             return;
         }
-        
-        pagination.style.display = 'flex';
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages;
-        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+
+        this.selectedContainers.add(name);
+        this.renderMonitoredContainers();
+        this.showNotification(`Added ${name} to monitoring`, 'success');
+        this.updateStats();
     }
 
-    function searchContainers(query) {
-        if (!query.trim()) {
-            filteredContainers = [...allContainers];
-        } else {
-            const searchTerm = query.toLowerCase();
-            filteredContainers = allContainers.filter(container => 
-                container.name.toLowerCase().includes(searchTerm) ||
-                container.image.toLowerCase().includes(searchTerm) ||
-                container.id.toLowerCase().includes(searchTerm)
-            );
-        }
-        currentPage = 1;
-        renderContainers();
-        updatePagination();
+    removeContainer(name) {
+        this.selectedContainers.delete(name);
+        this.renderMonitoredContainers();
+        this.showNotification(`Removed ${name} from monitoring`, 'info');
+        this.updateStats();
     }
 
-    // Global function for add button
-    window.addContainerToMonitoring = function(name, image) {
-        if (selectedContainers.has(name)) {
-            alert('Container is already selected for monitoring!');
+    renderMonitoredContainers() {
+        const container = document.getElementById('monitored-containers-list');
+        if (!container) return;
+
+        if (this.selectedContainers.size === 0) {
+            container.innerHTML = '<p class="empty-state">No containers being monitored</p>';
             return;
         }
-        
-        selectedContainers.add(name);
-        
-        // Add to selected containers list
-        const selectedList = document.getElementById('selected-containers-list');
-        const noContainers = document.getElementById('no-containers');
-        
-        const selectedItem = document.createElement('div');
-        selectedItem.className = 'selected-item';
-        selectedItem.setAttribute('data-name', name);
-        selectedItem.innerHTML = `
-            <div class="container-info">
-                <strong>${name}</strong>
-                <span class="image">${image}</span>
-                <span class="health">Health: Auto-detect</span>
-            </div>
-            <div class="container-options">
-                <label class="option">
-                    <input type="checkbox" class="auto_update" checked>
-                    Auto Update
-                </label>
-                <label class="option">
-                    <input type="checkbox" class="rollback" checked>
-                    Rollback on Failure
-                </label>
-                <label class="option">
-                    <input type="checkbox" class="enabled" checked>
-                    Enabled
-                </label>
-            </div>
-            <button class="remove-selected" onclick="removeContainerFromMonitoring('${name}')">×</button>
-        `;
-        
-        selectedList.appendChild(selectedItem);
-        noContainers.style.display = 'none';
-        
-        // Update the add button to show it's added
-        const card = document.querySelector(`[data-name="${name}"]`);
-        const addBtn = card.querySelector('.add-btn');
-        addBtn.textContent = '✓';
-        addBtn.classList.add('added');
-        addBtn.onclick = () => alert('Container already added!');
-    };
 
-    // Global function for remove button
-    window.removeContainerFromMonitoring = function(name) {
-        selectedContainers.delete(name);
-        
-        // Remove from selected list
-        const selectedItem = document.querySelector(`[data-name="${name}"]`);
-        if (selectedItem) {
-            selectedItem.remove();
-        }
-        
-        // Show no containers message if empty
-        const selectedList = document.getElementById('selected-containers-list');
-        const noContainers = document.getElementById('no-containers');
-        if (selectedList.children.length === 0) {
-            noContainers.style.display = 'block';
-        }
-        
-        // Reset the add button
-        const card = document.querySelector(`[data-name="${name}"]`);
-        if (card) {
-            const addBtn = card.querySelector('.add-btn');
-            addBtn.textContent = '+';
-            addBtn.classList.remove('added');
-            addBtn.onclick = () => addContainerToMonitoring(name, card.querySelector('.container-details').textContent.match(/Image: (.+)/)[1]);
-        }
-    };
+        container.innerHTML = Array.from(this.selectedContainers).map(name => {
+            const containerData = this.containers.find(c => c.name === name);
+            return `
+                <div class="monitored-card" data-name="${name}">
+                    <div class="card-header">
+                        <div class="card-title">${name}</div>
+                        <button class="remove-btn" onclick="guardian.removeContainer('${name}')">
+                            <i class="ph-x"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-info">
+                            <span class="info-label">Image</span>
+                            <span class="info-value">${containerData?.image || 'Unknown'}</span>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle">
+                                <input type="checkbox" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Auto Update</span>
+                            </label>
+                            <label class="toggle">
+                                <input type="checkbox" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Auto Rollback</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
-    function save() {
+    setupEventListeners() {
+        // Save configuration
+        document.getElementById('save-config')?.addEventListener('click', () => {
+            this.saveConfiguration();
+        });
+
+        // Run update now
+        document.getElementById('run-now')?.addEventListener('click', () => {
+            this.runUpdate();
+        });
+
+        // Refresh containers
+        document.getElementById('refresh-all')?.addEventListener('click', () => {
+            this.loadContainers();
+            this.showNotification('Refreshing containers...', 'info');
+        });
+
+        // Search
+        document.getElementById('container-search')?.addEventListener('input', (e) => {
+            this.searchContainers(e.target.value);
+        });
+
+        // Clear logs
+        document.getElementById('clear-logs')?.addEventListener('click', () => {
+            this.clearLogs();
+        });
+    }
+
+    searchContainers(query) {
+        const cards = document.querySelectorAll('.container-card');
+        cards.forEach(card => {
+            const name = card.dataset.name.toLowerCase();
+            const visible = name.includes(query.toLowerCase());
+            card.style.display = visible ? 'block' : 'none';
+        });
+    }
+
+    async saveConfiguration() {
         const config = {
-            telegram_bot_token: document.getElementById('bot_token').value,
-            telegram_chat_id: document.getElementById('chat_id').value,
+            telegram_bot_token: document.getElementById('bot_token')?.value || '',
+            telegram_chat_id: document.getElementById('chat_id')?.value || '',
             global: {
-                cleanup_unused_images: document.getElementById('cleanup').checked,
-                cleanup_keep_last_n: parseInt(document.getElementById('keep_last').value) || 3,
-                dry_run: document.getElementById('dry_run').checked,
-                check_interval_minutes: parseInt(document.getElementById('interval').value) || 60
+                cleanup_unused_images: document.getElementById('cleanup')?.checked || false,
+                cleanup_keep_last_n: parseInt(document.getElementById('keep_last')?.value) || 3,
+                dry_run: document.getElementById('dry_run')?.checked || false
             },
             cron: {
-                enabled: document.getElementById('cron_enabled').checked,
-                schedule: generateCronExpression()
+                enabled: document.getElementById('cron_enabled')?.checked || false,
+                schedule: document.getElementById('cron-expression')?.textContent || '0 */1 * * *'
             },
-            containers: []
+            containers: Array.from(this.selectedContainers).map(name => ({
+                name: name,
+                image: this.containers.find(c => c.name === name)?.image || '',
+                auto_update: true,
+                rollback_on_failure: true,
+                enabled: true
+            }))
         };
 
-        // Get containers from selected list
-        document.querySelectorAll('.selected-item').forEach(el => {
-            const name = el.getAttribute('data-name');
-            const image = el.querySelector('.image').textContent;
-            const healthUrl = el.querySelector('.health').textContent.replace('Health: ', '');
-            
-            config.containers.push({
-                name: name,
-                image: image,
-                health_check_url: healthUrl === 'Health: Auto-detect' ? '' : healthUrl.replace('Health: ', ''),
-                auto_update: el.querySelector('.auto_update').checked,
-                rollback_on_failure: el.querySelector('.rollback').checked,
-                enabled: el.querySelector('.enabled').checked
+        try {
+            const response = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
             });
-        });
 
-        fetch('/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        }).then(r => r.json()).then(d => {
-            alert('✅ Configuration saved and cron updated!');
-        });
-    }
-
-    // Event Listeners
-    document.getElementById('save').addEventListener('click', save);
-    document.getElementById('run-now').addEventListener('click', () => {
-        fetch('/run-now', { method: 'POST' }).then(r => r.json()).then(d => {
-            alert('🔄 Update started in background!');
-        });
-    });
-
-    document.getElementById('refresh-containers').addEventListener('click', loadRunningContainers);
-    
-    // Search functionality
-    document.getElementById('container-search').addEventListener('input', (e) => {
-        searchContainers(e.target.value);
-    });
-    
-    // Pagination functionality
-    document.getElementById('prev-page').addEventListener('click', () => {
-        if (currentPage > 1) {
-            currentPage--;
-            renderContainers();
-            updatePagination();
-        }
-    });
-    
-    document.getElementById('next-page').addEventListener('click', () => {
-        const totalPages = Math.ceil(filteredContainers.length / containersPerPage);
-        if (currentPage < totalPages) {
-            currentPage++;
-            renderContainers();
-            updatePagination();
-        }
-    });
-
-    // Initialize cron scheduler
-    function initializeCronScheduler() {
-        // Parse existing cron from config and set appropriate radio button
-        const existingCron = document.getElementById('cron-expression').textContent;
-        const frequency = parseExistingCron(existingCron);
-        document.querySelector(`input[name="cron_frequency"][value="${frequency}"]`).checked = true;
-        
-        // Add event listeners for cron changes
-        document.querySelectorAll('input[name="cron_frequency"]').forEach(radio => {
-            radio.addEventListener('change', updateCronPreview);
-        });
-        
-        document.getElementById('daily_hour').addEventListener('change', updateCronPreview);
-        document.getElementById('weekly_day').addEventListener('change', updateCronPreview);
-        document.getElementById('weekly_hour').addEventListener('change', updateCronPreview);
-        document.getElementById('custom_minutes').addEventListener('change', updateCronPreview);
-        document.getElementById('manual_cron').addEventListener('input', updateCronPreview);
-        
-        // Initial preview update
-        updateCronPreview();
-    }
-
-    // Initialize everything
-    initializeCronScheduler();
-    loadRunningContainers();
-
-    // Initialize selected containers from existing config
-    document.querySelectorAll('.selected-item').forEach(el => {
-        const name = el.getAttribute('data-name');
-        selectedContainers.add(name);
-    });
-
-    // Live log viewer with enhanced display
-    function loadLogs() {
-        fetch('/status').then(r => r.json()).then(data => {
-            const logsContainer = document.getElementById('logs');
-            const timestamp = new Date(data.timestamp).toLocaleTimeString();
-            
-            // Create formatted log display
-            let logHtml = `<div class="log-header">📊 Live Logs - Last Updated: ${timestamp}</div>`;
-            
-            if (data.logs && data.logs.length > 0) {
-                data.logs.forEach(log => {
-                    let logClass = 'log-entry';
-                    if (log.includes('[ERROR]') || log.includes('ERROR')) {
-                        logClass += ' log-error';
-                    } else if (log.includes('[WARNING]') || log.includes('WARNING')) {
-                        logClass += ' log-warning';
-                    } else if (log.includes('[INFO]') || log.includes('INFO')) {
-                        logClass += ' log-info';
-                    } else if (log.includes('[CRON]')) {
-                        logClass += ' log-cron';
-                    } else if (log.includes('[SYSTEM]')) {
-                        logClass += ' log-system';
-                    }
-                    
-                    logHtml += `<div class="${logClass}">${log}</div>`;
-                });
+            if (response.ok) {
+                this.showNotification('Configuration saved successfully', 'success');
             } else {
-                logHtml += '<div class="log-entry log-info">No logs available yet. Start monitoring containers to see activity.</div>';
+                throw new Error('Failed to save');
             }
-            
-            // Add container status if available
-            if (data.container_status && data.container_status.length > 0) {
-                logHtml += '<div class="log-header">🐳 Container Status</div>';
-                data.container_status.forEach(container => {
-                    const statusClass = container.status.includes('Up') ? 'log-success' : 'log-error';
-                    logHtml += `<div class="log-entry ${statusClass}">${container.name} (${container.image}): ${container.status}</div>`;
-                });
-            }
-            
-            logsContainer.innerHTML = logHtml;
-            
-            // Auto-scroll to bottom
-            logsContainer.scrollTop = logsContainer.scrollHeight;
-        }).catch(error => {
-            console.error('Error loading logs:', error);
-            document.getElementById('logs').innerHTML = '<div class="log-entry log-error">Error loading logs: ' + error.message + '</div>';
-        });
+        } catch (error) {
+            this.showNotification('Failed to save configuration', 'error');
+        }
     }
-    
-    // Load logs immediately and set up auto-refresh
-    loadLogs();
-    setInterval(loadLogs, 3000); // Refresh every 3 seconds
 
-});
+    async runUpdate() {
+        try {
+            const response = await fetch('/run-now', { method: 'POST' });
+            if (response.ok) {
+                this.showNotification('Update started', 'success');
+                this.loadLogs();
+            }
+        } catch (error) {
+            this.showNotification('Failed to start update', 'error');
+        }
+    }
+
+    async loadLogs() {
+        try {
+            const response = await fetch('/status');
+            const data = await response.json();
+            
+            const logsContainer = document.getElementById('logs-output');
+            if (logsContainer && data.logs) {
+                logsContainer.innerHTML = data.logs.map(log => {
+                    const type = log.includes('ERROR') ? 'error' : 
+                                log.includes('WARNING') ? 'warning' : 
+                                log.includes('SUCCESS') ? 'success' : 'info';
+                    return `<div class="log-entry ${type}">${log}</div>`;
+                }).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load logs:', error);
+        }
+    }
+
+    async clearLogs() {
+        try {
+            const response = await fetch('/clear-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                // Clear the logs display immediately
+                const logsContainer = document.getElementById('logs-output');
+                if (logsContainer) {
+                    logsContainer.innerHTML = '<div class="log-entry info">Logs cleared successfully</div>';
+                }
+                this.showNotification('Logs cleared successfully', 'success');
+            } else {
+                throw new Error('Failed to clear logs');
+            }
+        } catch (error) {
+            console.error('Failed to clear logs:', error);
+            this.showNotification('Failed to clear logs', 'error');
+        }
+    }
+
+    updateStats() {
+        document.getElementById('total-containers').textContent = this.containers.length;
+        document.getElementById('monitored-containers').textContent = this.selectedContainers.size;
+        document.getElementById('auto-updates').textContent = this.selectedContainers.size;
+        
+        const now = new Date();
+        document.getElementById('last-update').textContent = now.toLocaleTimeString();
+    }
+
+    showNotification(message, type = 'info') {
+        // Simple notification (you can enhance this with a toast library)
+        console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    startPolling() {
+        // Refresh logs every 5 seconds
+        setInterval(() => this.loadLogs(), 5000);
+        
+        // Refresh containers every 30 seconds
+        setInterval(() => this.loadContainers(), 30000);
+    }
+}
+
+// Global instance
+const guardian = new GuardianLite();
+
+// Helper function for global access
+window.showSection = (section) => guardian.showSection(section);
+window.removeContainer = (name) => guardian.removeContainer(name);
