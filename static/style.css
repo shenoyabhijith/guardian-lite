@@ -48,6 +48,13 @@ input[type="checkbox"] {
     margin-bottom: 30px;
 }
 
+.container-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
 .refresh-btn {
     background: #27ae60;
     color: white;
@@ -56,12 +63,63 @@ input[type="checkbox"] {
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
-    margin-bottom: 15px;
     width: auto;
 }
 
 .refresh-btn:hover {
     background: #229954;
+}
+
+.search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.page-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #2980b9;
+}
+
+.page-btn:disabled {
+    background: #bdc3c7;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
 }
 
 .running-containers {

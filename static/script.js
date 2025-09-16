@@ -59,6 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
         return 'manual';
     }
 
+document.addEventListener('DOMContentLoaded', function() {
+    let selectedContainers = new Set();
+    let allContainers = [];
+    let filteredContainers = [];
+    let currentPage = 1;
+    const containersPerPage = 6;
+
     // Container Discovery Functions
     function loadRunningContainers() {
         const container = document.getElementById('running-containers');
@@ -72,30 +79,84 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                if (data.containers.length === 0) {
+                allContainers = data.containers || [];
+                filteredContainers = [...allContainers];
+                currentPage = 1;
+                
+                if (allContainers.length === 0) {
                     container.innerHTML = '<div class="loading">No running containers found</div>';
+                    document.getElementById('container-pagination').style.display = 'none';
                     return;
                 }
                 
-                container.innerHTML = data.containers.map(container => `
-                    <div class="container-card" data-name="${container.name}">
-                        <div class="container-header">
-                            <div class="container-name">${container.name}</div>
-                            <div class="container-status">${container.status}</div>
-                        </div>
-                        <div class="container-details">
-                            <div><strong>Image:</strong> ${container.image}</div>
-                            <div><strong>ID:</strong> ${container.id}</div>
-                            <div><strong>Created:</strong> ${container.created}</div>
-                            <div><strong>Ports:</strong> ${container.ports.join(', ') || 'None'}</div>
-                        </div>
-                        <button class="add-btn" onclick="addContainerToMonitoring('${container.name}', '${container.image}')">+</button>
-                    </div>
-                `).join('');
+                renderContainers();
+                updatePagination();
             })
             .catch(error => {
                 container.innerHTML = `<div class="loading">Error loading containers: ${error.message}</div>`;
             });
+    }
+
+    function renderContainers() {
+        const container = document.getElementById('running-containers');
+        const startIndex = (currentPage - 1) * containersPerPage;
+        const endIndex = startIndex + containersPerPage;
+        const pageContainers = filteredContainers.slice(startIndex, endIndex);
+        
+        if (pageContainers.length === 0) {
+            container.innerHTML = '<div class="loading">No containers match your search</div>';
+            return;
+        }
+        
+        container.innerHTML = pageContainers.map(container => `
+            <div class="container-card" data-name="${container.name}">
+                <div class="container-header">
+                    <div class="container-name">${container.name}</div>
+                    <div class="container-status">${container.status}</div>
+                </div>
+                <div class="container-details">
+                    <div><strong>Image:</strong> ${container.image}</div>
+                    <div><strong>ID:</strong> ${container.id}</div>
+                    <div><strong>Created:</strong> ${container.created}</div>
+                    <div><strong>Ports:</strong> ${container.ports.join(', ') || 'None'}</div>
+                </div>
+                <button class="add-btn" onclick="addContainerToMonitoring('${container.name}', '${container.image}')">+</button>
+            </div>
+        `).join('');
+    }
+
+    function updatePagination() {
+        const totalPages = Math.ceil(filteredContainers.length / containersPerPage);
+        const pagination = document.getElementById('container-pagination');
+        const prevBtn = document.getElementById('prev-page');
+        const nextBtn = document.getElementById('next-page');
+        const pageInfo = document.getElementById('page-info');
+        
+        if (totalPages <= 1) {
+            pagination.style.display = 'none';
+            return;
+        }
+        
+        pagination.style.display = 'flex';
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    }
+
+    function searchContainers(query) {
+        if (!query.trim()) {
+            filteredContainers = [...allContainers];
+        } else {
+            const searchTerm = query.toLowerCase();
+            filteredContainers = allContainers.filter(container => 
+                container.name.toLowerCase().includes(searchTerm) ||
+                container.image.toLowerCase().includes(searchTerm) ||
+                container.id.toLowerCase().includes(searchTerm)
+            );
+        }
+        currentPage = 1;
+        renderContainers();
+        updatePagination();
     }
 
     // Global function for add button
@@ -226,6 +287,29 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('refresh-containers').addEventListener('click', loadRunningContainers);
+    
+    // Search functionality
+    document.getElementById('container-search').addEventListener('input', (e) => {
+        searchContainers(e.target.value);
+    });
+    
+    // Pagination functionality
+    document.getElementById('prev-page').addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderContainers();
+            updatePagination();
+        }
+    });
+    
+    document.getElementById('next-page').addEventListener('click', () => {
+        const totalPages = Math.ceil(filteredContainers.length / containersPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderContainers();
+            updatePagination();
+        }
+    });
 
     // Initialize cron scheduler
     function initializeCronScheduler() {
