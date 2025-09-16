@@ -4,6 +4,7 @@ import json
 import subprocess
 import os
 import docker
+from datetime import datetime
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
@@ -58,8 +59,21 @@ def save():
 
 @app.route('/run-now', methods=['POST'])
 def run_now():
-    subprocess.Popen(['python', 'guardian.py'])
-    return jsonify({"status": "started"})
+    """Run guardian update immediately and return status"""
+    try:
+        # Start guardian.py in background
+        process = subprocess.Popen(['python', 'guardian.py'], 
+                                 stdout=subprocess.PIPE, 
+                                 stderr=subprocess.PIPE,
+                                 text=True)
+        
+        # Log the manual trigger
+        with open('logs/guardian.log', 'a') as f:
+            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - INFO - Manual update triggered via web interface\n")
+        
+        return jsonify({"status": "started", "message": "Update process started in background"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/containers')
 def get_containers():
@@ -132,13 +146,46 @@ def get_containers():
 
 @app.route('/status')
 def status():
-    # Read last 10 log lines
+    """Get recent logs and system status"""
+    logs = []
+    
+    # Read guardian logs
     try:
         with open('logs/guardian.log', 'r') as f:
-            lines = f.readlines()[-10:]
-        return jsonify({"logs": lines})
+            lines = f.readlines()[-20:]  # Last 20 lines
+            logs.extend([line.strip() for line in lines if line.strip()])
     except:
-        return jsonify({"logs": ["No logs yet."]})
+        logs.append("No guardian logs yet.")
+    
+    # Read cron logs if they exist
+    try:
+        with open('logs/cron.log', 'r') as f:
+            cron_lines = f.readlines()[-10:]  # Last 10 cron lines
+            logs.extend([f"[CRON] {line.strip()}" for line in cron_lines if line.strip()])
+    except:
+        pass
+    
+    # Add current system status
+    logs.append(f"[SYSTEM] Last check: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Get container status
+    container_status = []
+    if docker_client:
+        try:
+            for container in docker_client.containers.list():
+                container_status.append({
+                    'name': container.name,
+                    'status': container.status,
+                    'image': container.image.tags[0] if container.image.tags else container.image.short_id
+                })
+        except:
+            pass
+    
+    return jsonify({
+        "logs": logs,
+        "container_status": container_status,
+        "timestamp": datetime.now().isoformat()
+    })
 
 def setup_cron(cron_config):
     if not cron_config.get('enabled', False):

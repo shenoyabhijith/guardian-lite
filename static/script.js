@@ -365,13 +365,57 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedContainers.add(name);
     });
 
-    // Live log viewer
+    // Live log viewer with enhanced display
     function loadLogs() {
         fetch('/status').then(r => r.json()).then(data => {
-            document.getElementById('logs').textContent = data.logs.join('\n');
+            const logsContainer = document.getElementById('logs');
+            const timestamp = new Date(data.timestamp).toLocaleTimeString();
+            
+            // Create formatted log display
+            let logHtml = `<div class="log-header">📊 Live Logs - Last Updated: ${timestamp}</div>`;
+            
+            if (data.logs && data.logs.length > 0) {
+                data.logs.forEach(log => {
+                    let logClass = 'log-entry';
+                    if (log.includes('[ERROR]') || log.includes('ERROR')) {
+                        logClass += ' log-error';
+                    } else if (log.includes('[WARNING]') || log.includes('WARNING')) {
+                        logClass += ' log-warning';
+                    } else if (log.includes('[INFO]') || log.includes('INFO')) {
+                        logClass += ' log-info';
+                    } else if (log.includes('[CRON]')) {
+                        logClass += ' log-cron';
+                    } else if (log.includes('[SYSTEM]')) {
+                        logClass += ' log-system';
+                    }
+                    
+                    logHtml += `<div class="${logClass}">${log}</div>`;
+                });
+            } else {
+                logHtml += '<div class="log-entry log-info">No logs available yet. Start monitoring containers to see activity.</div>';
+            }
+            
+            // Add container status if available
+            if (data.container_status && data.container_status.length > 0) {
+                logHtml += '<div class="log-header">🐳 Container Status</div>';
+                data.container_status.forEach(container => {
+                    const statusClass = container.status.includes('Up') ? 'log-success' : 'log-error';
+                    logHtml += `<div class="log-entry ${statusClass}">${container.name} (${container.image}): ${container.status}</div>`;
+                });
+            }
+            
+            logsContainer.innerHTML = logHtml;
+            
+            // Auto-scroll to bottom
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }).catch(error => {
+            console.error('Error loading logs:', error);
+            document.getElementById('logs').innerHTML = '<div class="log-entry log-error">Error loading logs: ' + error.message + '</div>';
         });
     }
+    
+    // Load logs immediately and set up auto-refresh
     loadLogs();
-    setInterval(loadLogs, 5000);
+    setInterval(loadLogs, 3000); // Refresh every 3 seconds
 
 });

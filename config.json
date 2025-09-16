@@ -7,9 +7,26 @@
     "dry_run": false,
     "check_interval_minutes": 60
   },
-  "containers": [],
   "cron": {
     "enabled": true,
     "schedule": "0 */1 * * *"
-  }
+  },
+  "containers": [
+    {
+      "name": "guardian",
+      "image": "guardian-lite",
+      "health_check_url": "Auto-detect",
+      "auto_update": true,
+      "rollback_on_failure": true,
+      "enabled": true
+    },
+    {
+      "name": "redis-test",
+      "image": "redis:latest",
+      "health_check_url": "Auto-detect",
+      "auto_update": true,
+      "rollback_on_failure": true,
+      "enabled": true
+    }
+  ]
 }
