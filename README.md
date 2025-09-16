@@ -9,15 +9,18 @@
 
 ## ✨ Features
 
-- 🖥️ **Ultra-simple GUI** - Configure everything via web interface
+- 🖥️ **Modern Web GUI** - Apple Music-inspired design with responsive interface
 - 📱 **Telegram alerts** - Real-time notifications for all events
 - 🔄 **Auto-update + rollback** - Smart container management with automatic rollback on failure
 - 🍓 **Raspberry Pi compatible** - ARM-optimized Docker image
 - ⚡ **Zero bloat** - Just Flask + vanilla JS/CSS (no heavy frameworks)
 - ⏰ **GUI-based Cron scheduling** - User-friendly interface with automatic expression generation
-- 🩺 **Health checks** - Optional URL monitoring for container health
+- 🩺 **Health checks** - Optional URL monitoring for container health with retry mechanism
 - 🧹 **Cleanup** - Automatic unused image removal
-- 📊 **Live logs** - Real-time log viewing in the web interface
+- 📊 **Live logs** - Real-time log viewing with clear functionality
+- 🔧 **Robust Docker integration** - Multiple fallback methods for Docker operations
+- 🎨 **Consistent UI** - Beautiful, modern interface with smooth animations
+- 🚀 **Container management** - Add/remove containers with visual feedback
 
 ## 📁 Project Structure
 
@@ -56,7 +59,7 @@ cd guardian-lite
 
 ### Access GUI
 
-Open your browser and go to: `http://your-pi-ip:8080`
+Open your browser and go to: `http://your-pi-ip:3000`
 
 ### 3. Configure
 
@@ -114,7 +117,7 @@ Guardian Lite runs in Docker and manages other Docker containers. It requires:
 docker build -t guardian-lite .
 
 # Run container
-docker run -d --name guardian -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock guardian-lite
+docker run -d --name guardian -p 3000:3000 -v /var/run/docker.sock:/var/run/docker.sock guardian-lite
 
 # View logs
 docker logs guardian
@@ -125,9 +128,20 @@ docker stop guardian && docker rm guardian
 
 ## 📊 Monitoring
 
-- **GUI Logs**: Real-time log viewing in the web interface
+- **GUI Logs**: Real-time log viewing in the web interface with clear functionality
 - **File Logs**: Detailed logs in `logs/guardian.log`
 - **Telegram**: Instant notifications for all events
+- **Container Status**: Live monitoring of all Docker containers
+- **Health Checks**: Automatic health monitoring with retry mechanisms
+
+## 🔧 Recent Improvements
+
+- **Fixed Docker Client Issues**: Robust fallback mechanisms for Docker operations
+- **Enhanced UI**: Apple Music-inspired design with consistent theming
+- **Improved Health Checks**: Retry mechanism with proper timing for container startup
+- **Clear Logs Functionality**: Web interface now includes log clearing capability
+- **Port Optimization**: Updated to use port 3000 to avoid conflicts
+- **Better Error Handling**: Comprehensive error handling throughout the application
 
 ## 🤝 Contributing
 
