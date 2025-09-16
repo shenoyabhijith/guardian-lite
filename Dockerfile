@@ -19,8 +19,8 @@ COPY . .
 # Allow access to host Docker
 VOLUME ["/var/run/docker.sock"]
 
-# Expose GUI on port 8080
-EXPOSE 8080
+# Expose GUI on port 3000
+EXPOSE 3000
 
 # Start GUI server
 CMD ["python", "web.py"]
