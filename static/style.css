@@ -715,6 +715,30 @@ body {
     margin-bottom: var(--spacing-xs);
 }
 
+.container-card .version-current {
+    position: relative;
+}
+
+.container-card .edit-version-btn {
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    border-radius: var(--radius-xs);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+    margin-left: var(--spacing-xs);
+}
+
+.container-card .edit-version-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    opacity: 1;
+}
+
 .container-card .version-current:last-child,
 .container-card .version-latest:last-child {
     margin-bottom: 0;

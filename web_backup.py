@@ -1,11 +1,12 @@
-from flask import Flask, render_template, jsonify, request
-import subprocess
+# web.py
+from flask import Flask, render_template, request, jsonify
 import json
+import subprocess
 import os
+import docker
 import requests
 import re
 from datetime import datetime
-import docker
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
@@ -31,7 +32,7 @@ def save_version_overrides(overrides):
         print(f"Error saving version overrides: {e}")
 
 # Initialize Docker client with multiple fallback methods
-docker_client = None
+    docker_client = None
 docker_methods = [
     {'method': 'unix_socket', 'url': 'unix://var/run/docker.sock'},
     {'method': 'from_env', 'url': None},
@@ -42,13 +43,17 @@ docker_methods = [
 for method_info in docker_methods:
     try:
         if method_info['url']:
-            docker_client = docker.from_env()
+            docker_client = docker.DockerClient(base_url=method_info['url'])
         else:
             docker_client = docker.from_env()
-        print(f"Docker client initialized using {method_info['method']}")
+        
+        # Test the connection
+        docker_client.ping()
+        print(f"Docker client initialized successfully via {method_info['method']}")
         break
     except Exception as e:
         print(f"Docker method {method_info['method']} failed: {e}")
+        docker_client = None
         continue
 
 if docker_client is None:
@@ -188,7 +193,7 @@ def check_image_updates(image_name):
         
         return None
             
-    except Exception as e:
+except Exception as e:
         print(f"Error checking image updates for {image_name}: {e}")
         return None
 
@@ -200,30 +205,27 @@ def get_container_update_info(container_name, image_name):
         if docker_client:
             try:
                 container = docker_client.containers.get(container_name)
-                current_image_id = container.image.short_id
+                current_image_id = container.image.id
             except:
                 pass
         
-        # Get update information
+        # Check for updates
         update_info = check_image_updates(image_name)
         
         return {
             'container_name': container_name,
-            'current_image_id': current_image_id,
             'image_name': image_name,
+            'current_image_id': current_image_id,
             'update_info': update_info
         }
+        
     except Exception as e:
-        print(f"Error getting container update info for {container_name}: {e}")
+        print(f"Error getting update info for {container_name}: {e}")
         return None
 
 def load_config():
-    try:
-        with open(CONFIG_PATH, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading config: {e}")
-        return {'containers': []}
+    with open(CONFIG_PATH, 'r') as f:
+        return json.load(f)
 
 def save_config(config):
     with open(CONFIG_PATH, 'w') as f:
@@ -239,43 +241,13 @@ def get_config():
     try:
         config = load_config()
         return jsonify(config)
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+    except FileNotFoundError:
+        return jsonify({"containers": []})
 
 @app.route('/config', methods=['POST'])
 def update_config():
     try:
-        data = request.get_json()
-        config = load_config()
-        
-        # Update container configuration
-        if 'name' in data and 'image' in data:
-            container_name = data['name']
-            container_image = data['image']
-            
-            # Check if container already exists
-            existing_container = None
-            for i, container in enumerate(config.get('containers', [])):
-                if container['name'] == container_name:
-                    existing_container = i
-                    break
-            
-            if existing_container is not None:
-                # Update existing container
-                config['containers'][existing_container].update({
-                    'image': container_image,
-                    'enabled': data.get('enabled', True),
-                    'auto_update': data.get('auto_update', False)
-                })
-            else:
-                # Add new container
-                config['containers'].append({
-                    'name': container_name,
-                    'image': container_image,
-                    'enabled': data.get('enabled', True),
-                    'auto_update': data.get('auto_update', False)
-                })
-        
+        config = request.get_json()
         save_config(config)
         return jsonify({"status": "success"})
     except Exception as e:
@@ -339,14 +311,18 @@ def get_containers():
     """Get list of running Docker containers"""
     containers = []
     
+    # Try Docker Python client first
     if docker_client:
         try:
+            print("Attempting to get containers from Docker client...")
             for container in docker_client.containers.list():
+                # Get port information
                 ports = []
-                for port, port_bindings in container.ports.items():
-                    if port_bindings:
-                        for binding in port_bindings:
-                            ports.append(f"{binding['HostIp']}:{binding['HostPort']}->{port}")
+                if container.ports:
+                    for port_info in container.ports.values():
+                        if port_info:
+                            for p in port_info:
+                                ports.append(f"{p['HostPort']}:{p['PrivatePort']}")
                 
                 # Get update information
                 image_name = container.image.tags[0] if container.image.tags else container.image.short_id
@@ -363,90 +339,106 @@ def get_containers():
                     'created': container.attrs['Created'][:19],
                     'update_info': update_info
                 })
+            print(f"Successfully retrieved {len(containers)} containers from Docker client")
+            return jsonify({"containers": containers})
         except Exception as e:
-            print(f"Error getting containers via Docker client: {e}")
-            # Fallback to subprocess
-            pass
+            print(f"Docker client error: {e}")
     
-    if not containers:
-        # Fallback to subprocess method
-        try:
-            result = subprocess.run(['docker', 'ps', '--format', 'json'], 
-                                  capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                for line in result.stdout.strip().split('\n'):
-                    if line.strip():
-                        try:
-                            container_data = json.loads(line)
-                            ports = []
-                            if container_data.get('Ports'):
-                                for port in container_data['Ports'].split(','):
-                                    if port.strip():
-                                        ports.append(port.strip())
-                            
-                            # Get update information
-                            image_name = container_data['Image']
-                            # Get the actual image tag (resolve 'latest' to real version)
-                            actual_image_name = get_actual_image_tag(image_name)
-                            update_info = get_container_update_info(container_data['Names'], actual_image_name)
-                            
-                            containers.append({
-                                'id': container_data['ID'][:12],
-                                'name': container_data['Names'],
-                                'image': actual_image_name,  # Show actual image tag instead of 'latest'
-                                'status': container_data['Status'],
-                                'ports': ports,
-                                'created': container_data['CreatedAt'][:19],
-                                'update_info': update_info
-                            })
-                        except json.JSONDecodeError:
-                            continue
-        except Exception as e:
-            print(f"Error getting containers via subprocess: {e}")
+    # Fallback: Try subprocess method
+    try:
+        print("Trying subprocess method...")
+        result = subprocess.run(['docker', 'ps', '--format', 'json'], 
+                              capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            for line in result.stdout.strip().split('\n'):
+                if line:
+                    try:
+                        container_data = json.loads(line)
+                        # Parse ports
+                        ports = []
+                        if container_data.get('Ports'):
+                            for port in container_data['Ports'].split(','):
+                                if port.strip() and '->' in port:
+                                    ports.append(port.strip())
+                        
+                        # Get update information
+                        image_name = container_data['Image']
+                        # Get the actual image tag (resolve 'latest' to real version)
+                        actual_image_name = get_actual_image_tag(image_name)
+                        update_info = get_container_update_info(container_data['Names'], actual_image_name)
+                        
+                        containers.append({
+                            'id': container_data['ID'][:12],
+                            'name': container_data['Names'],
+                            'image': actual_image_name,  # Show actual image tag instead of 'latest'
+                            'status': container_data['Status'],
+                            'ports': ports,
+                            'created': container_data['CreatedAt'][:19],
+                            'update_info': update_info
+                        })
+                    except json.JSONDecodeError:
+                        continue
+            
+            if containers:
+                print(f"Successfully retrieved {len(containers)} containers via subprocess")
+                return jsonify({"containers": containers})
+    except Exception as e:
+        print(f"Subprocess method failed: {e}")
     
-    return jsonify({'containers': containers})
+    # Final fallback: Return empty list
+    print("All methods failed, returning empty container list")
+    return jsonify({"containers": []})
 
 @app.route('/status')
-def get_status():
-    """Get system status and logs"""
+def status():
+    """Get recent logs and system status"""
     try:
+        # Read recent logs
         logs = []
+        log_files = ['logs/guardian.log', 'logs/cron.log']
         
-        # Read guardian.log
-        if os.path.exists('logs/guardian.log'):
-            with open('logs/guardian.log', 'r') as f:
-                guardian_logs = f.readlines()
-                for line in guardian_logs[-50:]:  # Last 50 lines
-                    if line.strip():
-                        logs.append({
-                            'file': 'guardian',
-                            'content': line.strip(),
-                            'timestamp': line.split(' - ')[0] if ' - ' in line else ''
-                        })
+        for log_file in log_files:
+            if os.path.exists(log_file):
+                try:
+                    with open(log_file, 'r') as f:
+                        lines = f.readlines()
+                        # Get last 50 lines
+                        recent_lines = lines[-50:] if len(lines) > 50 else lines
+                        for line in recent_lines:
+                            logs.append({
+                                'file': log_file,
+                                'content': line.strip(),
+                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                except Exception as e:
+                    logs.append({
+                        'file': log_file,
+                        'content': f"Error reading log file: {e}",
+                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    })
         
-        # Read cron.log
-        if os.path.exists('logs/cron.log'):
-            with open('logs/cron.log', 'r') as f:
-                cron_logs = f.readlines()
-                for line in cron_logs[-20:]:  # Last 20 lines
-                    if line.strip():
-                        logs.append({
-                            'file': 'cron',
-                            'content': line.strip(),
-                            'timestamp': line.split(' - ')[0] if ' - ' in line else ''
-                        })
+        # Get system status
+        system_status = {
+            'docker_running': False,
+            'last_check': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
         
-        # Check Docker status
-        docker_running = False
+        # Check if Docker is running
         try:
-            result = subprocess.run(['docker', 'ps'], capture_output=True, text=True, timeout=5)
-            docker_running = result.returncode == 0
+            if docker_client:
+                docker_client.ping()
+                system_status['docker_running'] = True
+            else:
+                # Try subprocess fallback
+                result = subprocess.run(['docker', 'version'], 
+                                      capture_output=True, text=True, timeout=5)
+                system_status['docker_running'] = result.returncode == 0
         except:
-            pass
-        
-        return jsonify({
+            system_status['docker_running'] = False
+    
+    return jsonify({
             'logs': logs,
-            'system_status': {'docker_running': docker_running, 'last_check': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            'system_status': system_status
         })
         
     except Exception as e:
@@ -489,16 +481,19 @@ def clear_logs():
         
         for log_file in log_files:
             if os.path.exists(log_file):
-                with open(log_file, 'w') as f:
-                    f.write('')
-                cleared_files.append(log_file)
+                try:
+                    with open(log_file, 'w') as f:
+                        f.write('')  # Clear the file
+                    cleared_files.append(log_file)
+                except Exception as e:
+                    print(f"Error clearing {log_file}: {e}")
         
         return jsonify({
             'status': 'success',
             'message': f'Cleared {len(cleared_files)} log files',
             'files': cleared_files
         })
-    
+        
     except Exception as e:
         return jsonify({
             'status': 'error',

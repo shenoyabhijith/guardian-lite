@@ -84,7 +84,10 @@ class Guardian {
                             <div class="version-info">
                                 <div class="version-current">
                                     <span class="version-label">Current:</span>
-                                    <span class="version-tag">${currentTag || 'latest'}</span>
+                                    <span class="version-tag" id="version-${c.name}">${currentTag || 'latest'}</span>
+                                    <button class="edit-version-btn" onclick="guardian.editVersion('${c.name}', '${c.image}')" title="Edit version">
+                                        <i class="ph-pencil"></i>
+                                    </button>
                                 </div>
                                 ${hasUpdate ? `
                                     <div class="version-latest">
@@ -152,6 +155,45 @@ class Guardian {
         } catch (error) {
             console.error('Failed to update container:', error);
             this.showNotification(`Failed to update ${name}: ${error.message}`, 'error');
+        }
+    }
+
+    editVersion(name, currentImage) {
+        const currentTag = currentImage.split(':')[1] || 'latest';
+        const newVersion = prompt(`Edit version for ${name}:\n\nCurrent: ${currentTag}\n\nEnter new version (e.g., v1.1.1):`, currentTag);
+        
+        if (newVersion && newVersion !== currentTag) {
+            this.updateVersionDisplay(name, newVersion);
+            this.saveVersionOverride(name, newVersion);
+        }
+    }
+
+    updateVersionDisplay(name, newVersion) {
+        const versionElement = document.getElementById(`version-${name}`);
+        if (versionElement) {
+            versionElement.textContent = newVersion;
+        }
+    }
+
+    async saveVersionOverride(name, version) {
+        try {
+            const response = await fetch('/update-version', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    name: name, 
+                    version: version 
+                })
+            });
+
+            if (response.ok) {
+                this.showNotification(`Version override saved for ${name}`, 'success');
+            } else {
+                throw new Error('Failed to save version override');
+            }
+        } catch (error) {
+            console.error('Failed to save version override:', error);
+            this.showNotification('Failed to save version override', 'error');
         }
     }
 
