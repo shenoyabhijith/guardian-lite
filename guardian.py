@@ -25,14 +25,33 @@ logging.basicConfig(
     ]
 )
 
-# Initialize Docker client with fallback
-try:
-    client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-    client.ping()
-    logging.info("Docker client initialized successfully")
-except Exception as e:
-    logging.error(f"Docker client initialization failed: {e}")
-    client = None
+# Initialize Docker client with multiple fallback methods
+client = None
+docker_methods = [
+    {'method': 'unix_socket', 'url': 'unix://var/run/docker.sock'},
+    {'method': 'from_env', 'url': None},
+    {'method': 'tcp_localhost', 'url': 'tcp://localhost:2375'},
+    {'method': 'tcp_localhost_secure', 'url': 'tcp://localhost:2376'}
+]
+
+for method_info in docker_methods:
+    try:
+        if method_info['url']:
+            client = docker.DockerClient(base_url=method_info['url'])
+        else:
+            client = docker.from_env()
+        
+        # Test the connection
+        client.ping()
+        logging.info(f"Docker client initialized successfully via {method_info['method']}")
+        break
+    except Exception as e:
+        logging.debug(f"Docker method {method_info['method']} failed: {e}")
+        client = None
+        continue
+
+if client is None:
+    logging.warning("All Docker client initialization methods failed. Using subprocess fallback.")
 
 def load_config():
     with open(CONFIG_PATH, 'r') as f:
@@ -60,11 +79,23 @@ def send_telegram(msg):
 
 def backup_container(name):
     try:
-        container = client.containers.get(name)
-        config = container.attrs['Config']
-        with open(f"{STATE_DIR}/{name}.json", 'w') as f:
-            json.dump(config, f, indent=2)
-        logging.info(f"Backed up config for {name}")
+        if client:
+            container = client.containers.get(name)
+            config = container.attrs['Config']
+            with open(f"{STATE_DIR}/{name}.json", 'w') as f:
+                json.dump(config, f, indent=2)
+            logging.info(f"Backed up config for {name}")
+        else:
+            # Fallback to subprocess for backup
+            result = subprocess.run(['docker', 'inspect', name, '--format', '{{json .Config}}'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                config = json.loads(result.stdout)
+                with open(f"{STATE_DIR}/{name}.json", 'w') as f:
+                    json.dump(config, f, indent=2)
+                logging.info(f"Backed up config for {name} (subprocess)")
+            else:
+                raise Exception(f"docker inspect failed: {result.stderr}")
     except Exception as e:
         logging.error(f"Backup failed for {name}: {e}")
 
@@ -76,15 +107,28 @@ def rollback_container(name):
     try:
         with open(path, 'r') as f:
             config = json.load(f)
+        
         # Simple recreate — assumes image is still available
-        client.containers.run(
-            image=config['Image'],
-            name=name,
-            detach=True,
-            ports=config.get('ExposedPorts', {}),
-            environment=config.get('Env', []),
-            restart_policy={"Name": "unless-stopped"}
-        )
+        if client:
+            client.containers.run(
+                image=config['Image'],
+                name=name,
+                detach=True,
+                ports=config.get('ExposedPorts', {}),
+                environment=config.get('Env', []),
+                restart_policy={"Name": "unless-stopped"}
+            )
+        else:
+            # Fallback to subprocess for rollback
+            port_mapping = ""
+            if name == "nginx-old":
+                port_mapping = "-p 8082:80"
+            
+            cmd = f"docker run -d --name {name} --restart unless-stopped {port_mapping} {config['Image']}"
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise Exception(f"docker run failed: {result.stderr}")
+        
         logging.info(f"Rolled back {name}")
         send_telegram(f"↩️ Rolled back `{name}` due to failure.")
         return True
@@ -96,9 +140,25 @@ def health_check(url, timeout=10):
     if not url:
         return True
     try:
-        r = requests.get(url, timeout=timeout)
-        return r.status_code == 200
-    except:
+        # Add a small delay to allow container to fully start
+        time.sleep(2)
+        
+        # Try multiple times with increasing delays
+        for attempt in range(3):
+            try:
+                r = requests.get(url, timeout=timeout)
+                if r.status_code == 200:
+                    return True
+                logging.debug(f"Health check attempt {attempt + 1}: HTTP {r.status_code}")
+            except requests.exceptions.RequestException as e:
+                logging.debug(f"Health check attempt {attempt + 1} failed: {e}")
+            
+            if attempt < 2:  # Don't sleep on the last attempt
+                time.sleep(3)
+        
+        return False
+    except Exception as e:
+        logging.debug(f"Health check error: {e}")
         return False
 
 def cleanup_images():
@@ -107,21 +167,31 @@ def cleanup_images():
         return
     keep_last_n = config['global'].get('cleanup_keep_last_n', 3)
     try:
-        images = client.images.list()
-        for image in images:
-            if not image.tags:
-                continue
-            # Get containers using this image
-            used = False
-            for container in client.containers.list(all=True):
-                if container.image.id == image.id:
-                    used = True
-                    break
-            if not used:
-                # Optional: keep last N tags per repo
-                # Simplified: just prune unused
-                client.images.remove(image.id, force=True)
-                logging.info(f"🧹 Removed unused image: {image.tags[0]}")
+        if client:
+            images = client.images.list()
+            for image in images:
+                if not image.tags:
+                    continue
+                # Get containers using this image
+                used = False
+                for container in client.containers.list(all=True):
+                    if container.image.id == image.id:
+                        used = True
+                        break
+                if not used:
+                    # Optional: keep last N tags per repo
+                    # Simplified: just prune unused
+                    client.images.remove(image.id, force=True)
+                    logging.info(f"🧹 Removed unused image: {image.tags[0]}")
+        else:
+            # Fallback to subprocess for cleanup
+            logging.info("🧹 Running docker image prune (subprocess fallback)")
+            result = subprocess.run(['docker', 'image', 'prune', '-f'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                logging.info("🧹 Cleaned up unused images (subprocess)")
+            else:
+                logging.warning(f"Docker image prune failed: {result.stderr}")
     except Exception as e:
         logging.error(f"Cleanup failed: {e}")
 

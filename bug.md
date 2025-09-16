@@ -10,7 +10,38 @@
 
 ## Fixed Issues
 
-*No bugs have been reported yet.*
+### Docker Client Initialization Failures
+- **Status**: Fixed
+- **Date**: 2025-09-16
+- **Description**: Docker client was failing to initialize, causing NoneType errors throughout the application
+- **Root Cause**: Single Docker connection method was failing, no fallback mechanisms
+- **Resolution**: 
+  - Implemented multiple Docker client initialization methods (unix socket, from_env, TCP)
+  - Added comprehensive subprocess fallbacks for all Docker operations
+  - Enhanced error handling and logging
+- **Impact**: High - All container operations were failing
+
+### NoneType Errors in Backup and Cleanup Functions
+- **Status**: Fixed  
+- **Date**: 2025-09-16
+- **Description**: Functions were trying to access client.containers and client.images when client was None
+- **Root Cause**: Missing null checks before using Docker client
+- **Resolution**:
+  - Added null checks for all Docker client operations
+  - Implemented subprocess fallbacks for backup, rollback, and cleanup operations
+  - Enhanced error handling with proper logging
+- **Impact**: High - Backup and cleanup operations were completely broken
+
+### Health Check Failures
+- **Status**: Fixed
+- **Date**: 2025-09-16  
+- **Description**: Health checks were failing immediately after container updates
+- **Root Cause**: Insufficient time for containers to fully start before health checks
+- **Resolution**:
+  - Added initial delay before health checks
+  - Implemented retry mechanism with multiple attempts
+  - Enhanced logging for health check debugging
+- **Impact**: Medium - Containers were being rolled back unnecessarily
 
 ## Testing Status
 

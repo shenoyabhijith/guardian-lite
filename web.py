@@ -10,31 +10,33 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 
 CONFIG_PATH = 'config.json'
 
-# Initialize Docker client
-try:
-    # Try different connection methods
-    docker_client = None
-    
-    # Method 1: Try unix socket
+# Initialize Docker client with multiple fallback methods
+docker_client = None
+docker_methods = [
+    {'method': 'unix_socket', 'url': 'unix://var/run/docker.sock'},
+    {'method': 'from_env', 'url': None},
+    {'method': 'tcp_localhost', 'url': 'tcp://localhost:2375'},
+    {'method': 'tcp_localhost_secure', 'url': 'tcp://localhost:2376'}
+]
+
+for method_info in docker_methods:
     try:
-        docker_client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-        docker_client.ping()
-        print("Docker client initialized via unix socket")
-    except Exception as e1:
-        print(f"Unix socket failed: {e1}")
-        
-        # Method 2: Try from_env
-        try:
+        if method_info['url']:
+            docker_client = docker.DockerClient(base_url=method_info['url'])
+        else:
             docker_client = docker.from_env()
-            docker_client.ping()
-            print("Docker client initialized via from_env")
-        except Exception as e2:
-            print(f"from_env failed: {e2}")
-            docker_client = None
-            
-except Exception as e:
-    print(f"Docker client initialization failed: {e}")
-    docker_client = None
+        
+        # Test the connection
+        docker_client.ping()
+        print(f"Docker client initialized successfully via {method_info['method']}")
+        break
+    except Exception as e:
+        print(f"Docker method {method_info['method']} failed: {e}")
+        docker_client = None
+        continue
+
+if docker_client is None:
+    print("All Docker client initialization methods failed. Using subprocess fallback.")
 
 def load_config():
     with open(CONFIG_PATH, 'r') as f:
