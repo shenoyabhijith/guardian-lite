@@ -59,7 +59,7 @@ cd guardian-lite
 
 ### Access GUI
 
-Open your browser and go to: `http://your-pi-ip:3000`
+Open your browser and go to: `http://your-pi-ip:8082`
 
 ### 3. Configure
 
@@ -117,7 +117,7 @@ Guardian Lite runs in Docker and manages other Docker containers. It requires:
 docker build -t guardian-lite .
 
 # Run container
-docker run -d --name guardian -p 3000:3000 -v /var/run/docker.sock:/var/run/docker.sock guardian-lite
+docker run -d --name guardian -p 8082:8082 -v /var/run/docker.sock:/var/run/docker.sock guardian-lite
 
 # View logs
 docker logs guardian

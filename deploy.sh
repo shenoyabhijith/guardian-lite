@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 PROJECT_NAME="guardian-lite"
 CONTAINER_NAME="guardian"
 IMAGE_NAME="guardian-lite"
-PORT="8080"
+PORT="8082"
 
 # Function to print colored output
 print_status() {
@@ -82,7 +82,7 @@ print_success "Directories created"
 print_status "🚀 Starting Guardian Lite..."
 docker run -d \
   --name ${CONTAINER_NAME} \
-  -p ${PORT}:8080 \
+  -p ${PORT}:8082 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v $(pwd)/config.json:/app/config.json \
   -v $(pwd)/state:/app/state \
