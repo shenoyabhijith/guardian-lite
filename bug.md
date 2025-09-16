@@ -43,6 +43,18 @@
   - Enhanced logging for health check debugging
 - **Impact**: Medium - Containers were being rolled back unnecessarily
 
+### Latest Tag Version Display Issue
+- **Status**: Fixed
+- **Date**: 2025-09-16
+- **Description**: Containers launched with 'latest' tag showed misleading version information
+- **Root Cause**: UI displayed original tag name instead of actual resolved version
+- **Resolution**:
+  - Added get_actual_image_tag() function to resolve 'latest' to real versions
+  - Updated container display to show actual versions (e.g., 'nginx:1.29.1')
+  - Enhanced update checking to compare against real versions
+  - Implemented fallback support for both Docker client and subprocess methods
+- **Impact**: Medium - Users couldn't see actual versions they were running
+
 ## Testing Status
 
 ✅ **Build Test**: Docker image builds successfully  
