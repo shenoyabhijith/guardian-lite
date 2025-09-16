@@ -12,7 +12,7 @@
       "name": "my-nginx",
       "image": "nginx:latest",
       "auto_update": true,
-      "health_check_url": "http://localhost:80",
+      "health_check_url": "",
       "rollback_on_failure": true,
       "enabled": true
     }

@@ -47,34 +47,6 @@ def run_now():
 @app.route('/containers')
 def get_containers():
     """Get list of running Docker containers"""
-    # For demo purposes, return mock data
-    mock_containers = [
-        {
-            'id': 'nginx123',
-            'name': 'nginx-test',
-            'image': 'nginx:latest',
-            'status': 'Up 5 minutes',
-            'ports': ['8081:80'],
-            'created': '2025-09-15T19:10:00'
-        },
-        {
-            'id': 'redis456',
-            'name': 'redis-test',
-            'image': 'redis:latest',
-            'status': 'Up 3 minutes',
-            'ports': ['6379:6379'],
-            'created': '2025-09-15T19:12:00'
-        },
-        {
-            'id': 'postgres789',
-            'name': 'postgres-test',
-            'image': 'postgres:latest',
-            'status': 'Up 1 minute',
-            'ports': ['5432:5432'],
-            'created': '2025-09-15T19:14:00'
-        }
-    ]
-    
     if not docker_client:
         # Try subprocess method first
         try:
@@ -98,8 +70,8 @@ def get_containers():
         except:
             pass
         
-        # Return mock data if Docker commands fail
-        return jsonify({"containers": mock_containers})
+        # Return empty list if Docker commands fail
+        return jsonify({"containers": []})
     
     try:
         containers = []
@@ -114,8 +86,8 @@ def get_containers():
             })
         return jsonify({"containers": containers})
     except Exception as e:
-        # Fallback to mock data
-        return jsonify({"containers": mock_containers})
+        # Return empty list on error
+        return jsonify({"containers": []})
 
 @app.route('/status')
 def status():

@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="container-info">
                 <strong>${name}</strong>
                 <span class="image">${image}</span>
-                <span class="health">Health: http://localhost:80</span>
+                <span class="health">Health: Auto-detect</span>
             </div>
             <div class="container-options">
                 <label class="option">
@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function() {
             config.containers.push({
                 name: name,
                 image: image,
-                health_check_url: healthUrl === 'http://localhost:80' ? '' : healthUrl,
+                health_check_url: healthUrl === 'Health: Auto-detect' ? '' : healthUrl.replace('Health: ', ''),
                 auto_update: el.querySelector('.auto_update').checked,
                 rollback_on_failure: el.querySelector('.rollback').checked,
                 enabled: el.querySelector('.enabled').checked
