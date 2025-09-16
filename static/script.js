@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     let selectedContainers = new Set();
+    let allContainers = [];
+    let filteredContainers = [];
+    let currentPage = 1;
+    const containersPerPage = 6;
 
     // Cron generation functions
     function generateCronExpression() {
@@ -59,21 +63,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return 'manual';
     }
 
-document.addEventListener('DOMContentLoaded', function() {
-    let selectedContainers = new Set();
-    let allContainers = [];
-    let filteredContainers = [];
-    let currentPage = 1;
-    const containersPerPage = 6;
-
     // Container Discovery Functions
     function loadRunningContainers() {
+        console.log('🔄 Loading running containers...');
         const container = document.getElementById('running-containers');
         container.innerHTML = '<div class="loading">Loading containers...</div>';
         
         fetch('/containers')
-            .then(response => response.json())
+            .then(response => {
+                console.log('📡 Response received:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('📦 Data received:', data);
                 if (data.error) {
                     container.innerHTML = `<div class="loading">Error: ${data.error}</div>`;
                     return;
@@ -83,6 +88,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 filteredContainers = [...allContainers];
                 currentPage = 1;
                 
+                console.log('✅ Processed containers:', allContainers.length, allContainers);
+                
                 if (allContainers.length === 0) {
                     container.innerHTML = '<div class="loading">No running containers found</div>';
                     document.getElementById('container-pagination').style.display = 'none';
@@ -91,24 +98,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 renderContainers();
                 updatePagination();
+                console.log('🎨 Containers rendered successfully');
             })
             .catch(error => {
+                console.error('❌ Error loading containers:', error);
                 container.innerHTML = `<div class="loading">Error loading containers: ${error.message}</div>`;
             });
     }
 
     function renderContainers() {
+        console.log('🎨 Rendering containers...');
         const container = document.getElementById('running-containers');
         const startIndex = (currentPage - 1) * containersPerPage;
         const endIndex = startIndex + containersPerPage;
         const pageContainers = filteredContainers.slice(startIndex, endIndex);
+        
+        console.log('📊 Render stats:', {
+            totalContainers: filteredContainers.length,
+            currentPage: currentPage,
+            containersPerPage: containersPerPage,
+            startIndex: startIndex,
+            endIndex: endIndex,
+            pageContainers: pageContainers.length
+        });
         
         if (pageContainers.length === 0) {
             container.innerHTML = '<div class="loading">No containers match your search</div>';
             return;
         }
         
-        container.innerHTML = pageContainers.map(container => `
+        const html = pageContainers.map(container => `
             <div class="container-card" data-name="${container.name}">
                 <div class="container-header">
                     <div class="container-name">${container.name}</div>
@@ -123,6 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button class="add-btn" onclick="addContainerToMonitoring('${container.name}', '${container.image}')">+</button>
             </div>
         `).join('');
+        
+        container.innerHTML = html;
+        console.log('✅ HTML rendered:', html.length, 'characters');
     }
 
     function updatePagination() {
