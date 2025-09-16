@@ -145,21 +145,53 @@
         </div>
 
         <div class="section">
-            <h2>🐳 Containers</h2>
-            <div id="containers">
-                {% for c in config.containers %}
-                <div class="container-item">
-                    <input class="name" placeholder="Container Name" value="{{ c.name }}">
-                    <input class="image" placeholder="Image (e.g., nginx:latest)" value="{{ c.image }}">
-                    <input class="health" placeholder="Health Check URL (optional)" value="{{ c.health_check_url }}">
-                    <label><input type="checkbox" class="auto_update" {% if c.auto_update %}checked{% endif %}> Auto Update</label>
-                    <label><input type="checkbox" class="rollback" {% if c.rollback_on_failure %}checked{% endif %}> Rollback on Failure</label>
-                    <label><input type="checkbox" class="enabled" {% if c.enabled %}checked{% endif %}> Enabled</label>
-                    <button class="remove">🗑️</button>
+            <h2>🐳 Container Monitoring</h2>
+            
+            <!-- Container Discovery -->
+            <div class="container-discovery">
+                <h3>📋 Running Containers</h3>
+                <button id="refresh-containers" class="refresh-btn">🔄 Refresh</button>
+                <div id="running-containers" class="running-containers">
+                    <div class="loading">Loading containers...</div>
                 </div>
-                {% endfor %}
             </div>
-            <button id="add-container">➕ Add Container</button>
+
+            <!-- Selected Containers -->
+            <div class="selected-containers">
+                <h3>✅ Selected for Monitoring</h3>
+                <div id="selected-containers-list" class="selected-list">
+                    {% for c in config.containers %}
+                    <div class="selected-item" data-name="{{ c.name }}">
+                        <div class="container-info">
+                            <strong>{{ c.name }}</strong>
+                            <span class="image">{{ c.image }}</span>
+                            {% if c.health_check_url %}
+                            <span class="health">Health: {{ c.health_check_url }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="container-options">
+                            <label class="option">
+                                <input type="checkbox" class="auto_update" {% if c.auto_update %}checked{% endif %}>
+                                Auto Update
+                            </label>
+                            <label class="option">
+                                <input type="checkbox" class="rollback" {% if c.rollback_on_failure %}checked{% endif %}>
+                                Rollback on Failure
+                            </label>
+                            <label class="option">
+                                <input type="checkbox" class="enabled" {% if c.enabled %}checked{% endif %}>
+                                Enabled
+                            </label>
+                        </div>
+                        <button class="remove-selected">🗑️ Remove</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div id="no-containers" class="no-containers" {% if config.containers %}style="display: none;"{% endif %}>
+                    <p>No containers selected for monitoring yet.</p>
+                    <p>Select containers from the running list above to start monitoring them.</p>
+                </div>
+            </div>
         </div>
 
         <div class="actions">

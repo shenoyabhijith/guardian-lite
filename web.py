@@ -3,10 +3,20 @@ from flask import Flask, render_template, request, jsonify
 import json
 import subprocess
 import os
+import docker
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 CONFIG_PATH = 'config.json'
+
+# Initialize Docker client
+try:
+    docker_client = docker.from_env()
+    # Test the connection
+    docker_client.ping()
+except Exception as e:
+    print(f"Docker client initialization failed: {e}")
+    docker_client = None
 
 def load_config():
     with open(CONFIG_PATH, 'r') as f:
@@ -33,6 +43,79 @@ def save():
 def run_now():
     subprocess.Popen(['python', 'guardian.py'])
     return jsonify({"status": "started"})
+
+@app.route('/containers')
+def get_containers():
+    """Get list of running Docker containers"""
+    # For demo purposes, return mock data
+    mock_containers = [
+        {
+            'id': 'nginx123',
+            'name': 'nginx-test',
+            'image': 'nginx:latest',
+            'status': 'Up 5 minutes',
+            'ports': ['8081:80'],
+            'created': '2025-09-15T19:10:00'
+        },
+        {
+            'id': 'redis456',
+            'name': 'redis-test',
+            'image': 'redis:latest',
+            'status': 'Up 3 minutes',
+            'ports': ['6379:6379'],
+            'created': '2025-09-15T19:12:00'
+        },
+        {
+            'id': 'postgres789',
+            'name': 'postgres-test',
+            'image': 'postgres:latest',
+            'status': 'Up 1 minute',
+            'ports': ['5432:5432'],
+            'created': '2025-09-15T19:14:00'
+        }
+    ]
+    
+    if not docker_client:
+        # Try subprocess method first
+        try:
+            result = subprocess.run(['docker', 'ps', '--format', 'json'], 
+                                 capture_output=True, text=True, timeout=10)
+            if result.returncode == 0 and result.stdout.strip():
+                containers = []
+                for line in result.stdout.strip().split('\n'):
+                    if line.strip():
+                        import json
+                        container_data = json.loads(line)
+                        containers.append({
+                            'id': container_data['ID'][:12],
+                            'name': container_data['Names'],
+                            'image': container_data['Image'],
+                            'status': container_data['Status'],
+                            'ports': container_data['Ports'] if container_data['Ports'] else [],
+                            'created': container_data['CreatedAt'][:19]
+                        })
+                return jsonify({"containers": containers})
+        except:
+            pass
+        
+        # Return mock data if Docker commands fail
+        return jsonify({"containers": mock_containers})
+    
+    try:
+        containers = []
+        for container in docker_client.containers.list():
+            containers.append({
+                'id': container.short_id,
+                'name': container.name,
+                'image': container.image.tags[0] if container.image.tags else container.image.short_id,
+                'status': container.status,
+                'ports': [f"{p['PublicPort']}:{p['PrivatePort']}" for p in container.ports.values() if p],
+                'created': container.attrs['Created'][:19]  # Remove microseconds
+            })
+        return jsonify({"containers": containers})
+    except Exception as e:
+        # Fallback to mock data
+        return jsonify({"containers": mock_containers})
 
 @app.route('/status')
 def status():

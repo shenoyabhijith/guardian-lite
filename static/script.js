@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    let selectedContainers = new Set();
 
     // Cron generation functions
     function generateCronExpression() {
@@ -58,6 +59,122 @@ document.addEventListener('DOMContentLoaded', function() {
         return 'manual';
     }
 
+    // Container Discovery Functions
+    function loadRunningContainers() {
+        const container = document.getElementById('running-containers');
+        container.innerHTML = '<div class="loading">Loading containers...</div>';
+        
+        fetch('/containers')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    container.innerHTML = `<div class="loading">Error: ${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.containers.length === 0) {
+                    container.innerHTML = '<div class="loading">No running containers found</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.containers.map(container => `
+                    <div class="container-card" data-name="${container.name}">
+                        <div class="container-header">
+                            <div class="container-name">${container.name}</div>
+                            <div class="container-status">${container.status}</div>
+                        </div>
+                        <div class="container-details">
+                            <div><strong>Image:</strong> ${container.image}</div>
+                            <div><strong>ID:</strong> ${container.id}</div>
+                            <div><strong>Created:</strong> ${container.created}</div>
+                            <div><strong>Ports:</strong> ${container.ports.join(', ') || 'None'}</div>
+                        </div>
+                        <button class="add-btn" onclick="addContainerToMonitoring('${container.name}', '${container.image}')">+</button>
+                    </div>
+                `).join('');
+            })
+            .catch(error => {
+                container.innerHTML = `<div class="loading">Error loading containers: ${error.message}</div>`;
+            });
+    }
+
+    // Global function for add button
+    window.addContainerToMonitoring = function(name, image) {
+        if (selectedContainers.has(name)) {
+            alert('Container is already selected for monitoring!');
+            return;
+        }
+        
+        selectedContainers.add(name);
+        
+        // Add to selected containers list
+        const selectedList = document.getElementById('selected-containers-list');
+        const noContainers = document.getElementById('no-containers');
+        
+        const selectedItem = document.createElement('div');
+        selectedItem.className = 'selected-item';
+        selectedItem.setAttribute('data-name', name);
+        selectedItem.innerHTML = `
+            <div class="container-info">
+                <strong>${name}</strong>
+                <span class="image">${image}</span>
+                <span class="health">Health: http://localhost:80</span>
+            </div>
+            <div class="container-options">
+                <label class="option">
+                    <input type="checkbox" class="auto_update" checked>
+                    Auto Update
+                </label>
+                <label class="option">
+                    <input type="checkbox" class="rollback" checked>
+                    Rollback on Failure
+                </label>
+                <label class="option">
+                    <input type="checkbox" class="enabled" checked>
+                    Enabled
+                </label>
+            </div>
+            <button class="remove-selected" onclick="removeContainerFromMonitoring('${name}')">🗑️ Remove</button>
+        `;
+        
+        selectedList.appendChild(selectedItem);
+        noContainers.style.display = 'none';
+        
+        // Update the add button to show it's added
+        const card = document.querySelector(`[data-name="${name}"]`);
+        const addBtn = card.querySelector('.add-btn');
+        addBtn.textContent = '✓';
+        addBtn.classList.add('added');
+        addBtn.onclick = () => alert('Container already added!');
+    };
+
+    // Global function for remove button
+    window.removeContainerFromMonitoring = function(name) {
+        selectedContainers.delete(name);
+        
+        // Remove from selected list
+        const selectedItem = document.querySelector(`[data-name="${name}"]`);
+        if (selectedItem) {
+            selectedItem.remove();
+        }
+        
+        // Show no containers message if empty
+        const selectedList = document.getElementById('selected-containers-list');
+        const noContainers = document.getElementById('no-containers');
+        if (selectedList.children.length === 0) {
+            noContainers.style.display = 'block';
+        }
+        
+        // Reset the add button
+        const card = document.querySelector(`[data-name="${name}"]`);
+        if (card) {
+            const addBtn = card.querySelector('.add-btn');
+            addBtn.textContent = '+';
+            addBtn.classList.remove('added');
+            addBtn.onclick = () => addContainerToMonitoring(name, card.querySelector('.container-details').textContent.match(/Image: (.+)/)[1]);
+        }
+    };
+
     function save() {
         const config = {
             telegram_bot_token: document.getElementById('bot_token').value,
@@ -75,11 +192,16 @@ document.addEventListener('DOMContentLoaded', function() {
             containers: []
         };
 
-        document.querySelectorAll('.container-item').forEach(el => {
+        // Get containers from selected list
+        document.querySelectorAll('.selected-item').forEach(el => {
+            const name = el.getAttribute('data-name');
+            const image = el.querySelector('.image').textContent;
+            const healthUrl = el.querySelector('.health').textContent.replace('Health: ', '');
+            
             config.containers.push({
-                name: el.querySelector('.name').value,
-                image: el.querySelector('.image').value,
-                health_check_url: el.querySelector('.health').value,
+                name: name,
+                image: image,
+                health_check_url: healthUrl === 'http://localhost:80' ? '' : healthUrl,
                 auto_update: el.querySelector('.auto_update').checked,
                 rollback_on_failure: el.querySelector('.rollback').checked,
                 enabled: el.querySelector('.enabled').checked
@@ -95,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Event Listeners
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('run-now').addEventListener('click', () => {
         fetch('/run-now', { method: 'POST' }).then(r => r.json()).then(d => {
@@ -102,30 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.getElementById('add-container').addEventListener('click', () => {
-        const div = document.createElement('div');
-        div.className = 'container-item';
-        div.innerHTML = `
-            <input class="name" placeholder="Container Name">
-            <input class="image" placeholder="Image (e.g., nginx:latest)">
-            <input class="health" placeholder="Health Check URL (optional)">
-            <label><input type="checkbox" class="auto_update"> Auto Update</label>
-            <label><input type="checkbox" class="rollback" checked> Rollback on Failure</label>
-            <label><input type="checkbox" class="enabled" checked> Enabled</label>
-            <button class="remove">🗑️</button>
-        `;
-        div.querySelector('.remove').addEventListener('click', function() {
-            div.remove();
-        });
-        document.getElementById('containers').appendChild(div);
-    });
-
-    // Enable remove buttons
-    document.querySelectorAll('.remove').forEach(btn => {
-        btn.addEventListener('click', function() {
-            btn.closest('.container-item').remove();
-        });
-    });
+    document.getElementById('refresh-containers').addEventListener('click', loadRunningContainers);
 
     // Initialize cron scheduler
     function initializeCronScheduler() {
@@ -149,8 +249,15 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCronPreview();
     }
 
-    // Initialize cron scheduler on page load
+    // Initialize everything
     initializeCronScheduler();
+    loadRunningContainers();
+
+    // Initialize selected containers from existing config
+    document.querySelectorAll('.selected-item').forEach(el => {
+        const name = el.getAttribute('data-name');
+        selectedContainers.add(name);
+    });
 
     // Live log viewer
     function loadLogs() {
