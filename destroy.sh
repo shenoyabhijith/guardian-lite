@@ -130,7 +130,7 @@ cleanup_containers() {
         print_status "Found containers: $(echo $containers | tr '\n' ' ')"
         
         # Create archive directory if needed
-        if [ "$should_archive" == "true" ]; then
+        if [ "$should_archive" = "true" ]; then
             create_archive_dir
         fi
         
