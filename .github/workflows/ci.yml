@@ -30,12 +30,12 @@ jobs:
     
     - name: Test Docker build
       run: |
-        docker build -t guardian-lite .
+        docker build -t guardian- .
         echo "✅ Docker build test passed"
     
     - name: Test Docker run
       run: |
-        docker run --rm -d --name guardian-test -p 8080:8080 guardian-lite
+        docker run --rm -d --name guardian-test -p 8080:8080 guardian-
         sleep 5
         curl -f http://localhost:8080 || exit 1
         docker stop guardian-test

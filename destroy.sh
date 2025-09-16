@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Guardian Lite - Destroy Script
-# Stops and removes Guardian Lite containers and cleans up project resources
+# Guardian  - Destroy Script
+# Stops and removes Guardian  containers and cleans up project resources
 
 set -e
 
@@ -13,9 +13,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Project configuration
-PROJECT_NAME="guardian-lite"
+PROJECT_NAME="guardian-"
 CONTAINER_NAME="guardian"
-IMAGE_NAME="guardian-lite"
+IMAGE_NAME="guardian-"
 ARCHIVE_DIR="archives"
 
 # Function to print colored output
@@ -35,19 +35,19 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-print_status "🗑️ Guardian Lite - Destroy & Cleanup"
+print_status "🗑️ Guardian  - Destroy & Cleanup"
 print_status "===================================="
 
 # Ask for confirmation before proceeding
 echo ""
-print_warning "⚠️  WARNING: This will destroy all Guardian Lite containers and resources!"
+print_warning "⚠️  WARNING: This will destroy all Guardian  containers and resources!"
 print_warning "⚠️  This action cannot be undone!"
 echo ""
 print_status "The following will be removed:"
-echo "  • All Guardian Lite containers (with optional archiving)"
-echo "  • Guardian Lite Docker images"
-echo "  • Guardian Lite networks and volumes"
-echo "  • Guardian Lite cron jobs"
+echo "  • All Guardian  containers (with optional archiving)"
+echo "  • Guardian  Docker images"
+echo "  • Guardian  networks and volumes"
+echo "  • Guardian  cron jobs"
 echo "  • Optional: Orphaned containers and unused images"
 echo ""
 
@@ -160,7 +160,7 @@ cleanup_containers() {
 
 # Function to clean up images
 cleanup_images() {
-    print_status "🔍 Looking for Guardian Lite images..."
+    print_status "🔍 Looking for Guardian  images..."
     
     # Find images matching our project
     local images=$(docker images -q --filter "reference=${IMAGE_NAME}" 2>/dev/null || true)
@@ -173,15 +173,15 @@ cleanup_images() {
             docker rmi ${image} > /dev/null 2>&1 || true
         done
         
-        print_success "Cleaned up Guardian Lite images"
+        print_success "Cleaned up Guardian  images"
     else
-        print_status "No Guardian Lite images found"
+        print_status "No Guardian  images found"
     fi
 }
 
 # Function to clean up networks
 cleanup_networks() {
-    print_status "🔍 Looking for Guardian Lite networks..."
+    print_status "🔍 Looking for Guardian  networks..."
     
     # Find networks created by our project
     local networks=$(docker network ls -q --filter "name=guardian" 2>/dev/null || true)
@@ -194,15 +194,15 @@ cleanup_networks() {
             docker network rm ${network} > /dev/null 2>&1 || true
         done
         
-        print_success "Cleaned up Guardian Lite networks"
+        print_success "Cleaned up Guardian  networks"
     else
-        print_status "No Guardian Lite networks found"
+        print_status "No Guardian  networks found"
     fi
 }
 
 # Function to clean up volumes
 cleanup_volumes() {
-    print_status "🔍 Looking for Guardian Lite volumes..."
+    print_status "🔍 Looking for Guardian  volumes..."
     
     # Find volumes created by our project
     local volumes=$(docker volume ls -q --filter "name=guardian" 2>/dev/null || true)
@@ -215,15 +215,15 @@ cleanup_volumes() {
             docker volume rm ${volume} > /dev/null 2>&1 || true
         done
         
-        print_success "Cleaned up Guardian Lite volumes"
+        print_success "Cleaned up Guardian  volumes"
     else
-        print_status "No Guardian Lite volumes found"
+        print_status "No Guardian  volumes found"
     fi
 }
 
 # Function to clean up cron jobs
 cleanup_cron() {
-    print_status "🔍 Looking for Guardian Lite cron jobs..."
+    print_status "🔍 Looking for Guardian  cron jobs..."
     
     # Check if cron is available
     if ! command -v crontab &> /dev/null; then
@@ -235,14 +235,14 @@ cleanup_cron() {
     local current_cron=$(crontab -l 2>/dev/null || echo "")
     
     if [ -n "$current_cron" ] && echo "$current_cron" | grep -q "guardian"; then
-        print_status "Found Guardian Lite cron jobs"
+        print_status "Found Guardian  cron jobs"
         
         # Remove guardian-related cron entries
         echo "$current_cron" | grep -v "guardian" | crontab - 2>/dev/null || true
         
-        print_success "Cleaned up Guardian Lite cron jobs"
+        print_success "Cleaned up Guardian  cron jobs"
     else
-        print_status "No Guardian Lite cron jobs found"
+        print_status "No Guardian  cron jobs found"
     fi
 }
 
@@ -266,10 +266,10 @@ list_archives() {
 
 # Main cleanup process
 # 1. Stop and remove main container (with archiving)
-cleanup_containers "${CONTAINER_NAME}" "main Guardian Lite container" "true"
+cleanup_containers "${CONTAINER_NAME}" "main Guardian  container" "true"
 
 # 2. Stop and remove any containers with 'guardian' in the name (with archiving)
-cleanup_containers "guardian" "all Guardian Lite containers" "true"
+cleanup_containers "guardian" "all Guardian  containers" "true"
 
 # 3. Clean up images
 cleanup_images
@@ -327,19 +327,19 @@ fi
 
 # Final status
 echo ""
-print_success "🎉 Guardian Lite cleanup completed!"
+print_success "🎉 Guardian  cleanup completed!"
 echo ""
 print_status "Summary of cleanup:"
-echo "✅ Stopped and removed all Guardian Lite containers"
+echo "✅ Stopped and removed all Guardian  containers"
 echo "✅ Archived container configurations for future reference"
-echo "✅ Removed Guardian Lite images"
-echo "✅ Cleaned up Guardian Lite networks"
-echo "✅ Cleaned up Guardian Lite volumes"
-echo "✅ Removed Guardian Lite cron jobs"
+echo "✅ Removed Guardian  images"
+echo "✅ Cleaned up Guardian  networks"
+echo "✅ Cleaned up Guardian  volumes"
+echo "✅ Removed Guardian  cron jobs"
 echo ""
 
 # List archived containers
 list_archives
 
-print_status "To redeploy Guardian Lite, run: ./deploy.sh"
+print_status "To redeploy Guardian , run: ./deploy.sh"
 print_status "To check Docker status: docker ps -a"

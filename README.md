@@ -1,4 +1,4 @@
-# Guardian Lite
+# Guardian 
 
 🚀 **A featherweight container auto-updater with GUI, Telegram alerts, and ARM support for Raspberry Pi**
 
@@ -28,7 +28,7 @@
 ## 📁 Project Structure
 
 ```
-guardian-lite/
+guardian-/
 ├── deploy.sh              # Simple deployment script
 ├── destroy.sh             # Cleanup script with archiving
 ├── Dockerfile             # Container definition
@@ -50,10 +50,10 @@ guardian-lite/
 ## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/shenoyabhijith/guardian-lite.git
-cd guardian-lite
+git clone https://github.com/shenoyabhijith/guardian-.git
+cd guardian-
 
-# Deploy Guardian Lite
+# Deploy Guardian 
 ./deploy.sh
 
 # Destroy and cleanup everything
@@ -107,7 +107,7 @@ The GUI provides an intuitive interface for scheduling updates:
 
 ## 🐳 Docker Support
 
-Guardian Lite runs in Docker and manages other Docker containers. It requires:
+Guardian  runs in Docker and manages other Docker containers. It requires:
 
 - Access to Docker socket (`/var/run/docker.sock`)
 - Persistent volume for configuration and logs
@@ -117,10 +117,10 @@ Guardian Lite runs in Docker and manages other Docker containers. It requires:
 
 ```bash
 # Build image
-docker build -t guardian-lite .
+docker build -t guardian- .
 
 # Run container
-docker run -d --name guardian -p 8082:8082 -v /var/run/docker.sock:/var/run/docker.sock guardian-lite
+docker run -d --name guardian -p 8082:8082 -v /var/run/docker.sock:/var/run/docker.sock guardian-
 
 # View logs
 docker logs guardian
@@ -151,7 +151,7 @@ docker stop guardian && docker rm guardian
 
 ## 🔍 External Update Checking
 
-Guardian Lite now includes real-time container image update detection using Docker Hub API:
+Guardian  now includes real-time container image update detection using Docker Hub API:
 
 ### **How It Works:**
 1. **API Integration**: Queries Docker Hub v2 API for latest image tags

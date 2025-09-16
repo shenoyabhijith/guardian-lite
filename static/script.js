@@ -1,5 +1,5 @@
-// Guardian Lite - Apple Music Style
-class GuardianLite {
+// Guardian  - Apple Music Style
+class Guardian {
     constructor() {
         this.containers = [];
         this.selectedContainers = new Set();
@@ -318,7 +318,7 @@ class GuardianLite {
 }
 
 // Global instance
-const guardian = new GuardianLite();
+const guardian = new Guardian();
 
 // Helper function for global access
 window.showSection = (section) => guardian.showSection(section);

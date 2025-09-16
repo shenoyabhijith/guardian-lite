@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Guardian Lite - Simple Deploy Script
-# Creates and starts the Guardian Lite container
+# Guardian  - Simple Deploy Script
+# Creates and starts the Guardian  container
 
 set -e
 
@@ -13,9 +13,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Project configuration
-PROJECT_NAME="guardian-lite"
+PROJECT_NAME="guardian-"
 CONTAINER_NAME="guardian"
-IMAGE_NAME="guardian-lite"
+IMAGE_NAME="guardian-"
 PORT="8082"
 
 # Function to print colored output
@@ -35,7 +35,7 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-print_status "🚀 Guardian Lite - Simple Deploy"
+print_status "🚀 Guardian  - Simple Deploy"
 print_status "================================="
 
 # Check if Docker is running
@@ -46,7 +46,7 @@ fi
 
 # Check if we're in the right directory
 if [ ! -f "Dockerfile" ] || [ ! -f "guardian.py" ]; then
-    print_error "Please run this script from the Guardian Lite project directory."
+    print_error "Please run this script from the Guardian  project directory."
     print_error "Required files: Dockerfile, guardian.py"
     exit 1
 fi
@@ -64,7 +64,7 @@ if docker ps -aq --filter "name=${CONTAINER_NAME}" | grep -q .; then
 fi
 
 # Build the image
-print_status "🔨 Building Guardian Lite image..."
+print_status "🔨 Building Guardian  image..."
 docker build -t ${IMAGE_NAME} .
 
 if [ $? -ne 0 ]; then
@@ -79,7 +79,7 @@ mkdir -p state logs
 print_success "Directories created"
 
 # Run the container
-print_status "🚀 Starting Guardian Lite..."
+print_status "🚀 Starting Guardian ..."
 docker run -d \
   --name ${CONTAINER_NAME} \
   -p ${PORT}:8082 \
@@ -91,7 +91,7 @@ docker run -d \
   ${IMAGE_NAME}
 
 if [ $? -eq 0 ]; then
-    print_success "Guardian Lite is now running!"
+    print_success "Guardian  is now running!"
     echo ""
     print_status "🌐 Access the GUI at: http://localhost:${PORT}"
     
@@ -120,6 +120,6 @@ if [ $? -eq 0 ]; then
     docker ps --filter name=${CONTAINER_NAME} --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
     
 else
-    print_error "Failed to start Guardian Lite!"
+    print_error "Failed to start Guardian !"
     exit 1
 fi

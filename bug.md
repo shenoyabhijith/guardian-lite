@@ -1,4 +1,4 @@
-# Guardian Lite - Bug Tracking
+# Guardian  - Bug Tracking
 
 ## Known Issues
 
@@ -65,5 +65,5 @@
 - ARM compatibility verified through Docker build process
 - All core functionality implemented and working
 - Ready for Raspberry Pi deployment
-- Repository available at: https://github.com/shenoyabhijith/guardian-lite
+- Repository available at: https://github.com/shenoyabhijith/guardian-
 - Automated CI/CD pipeline with security scanning
