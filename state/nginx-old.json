@@ -1,0 +1,38 @@
+{
+  "Hostname": "14d94e74f223",
+  "Domainname": "",
+  "User": "",
+  "AttachStdin": false,
+  "AttachStdout": false,
+  "AttachStderr": false,
+  "ExposedPorts": {
+    "80/tcp": {}
+  },
+  "Tty": false,
+  "OpenStdin": false,
+  "StdinOnce": false,
+  "Env": [
+    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "NGINX_VERSION=1.29.1",
+    "NJS_VERSION=0.9.1",
+    "NJS_RELEASE=1~bookworm",
+    "PKG_RELEASE=1~bookworm",
+    "DYNPKG_RELEASE=1~bookworm"
+  ],
+  "Cmd": [
+    "nginx",
+    "-g",
+    "daemon off;"
+  ],
+  "Image": "nginx:latest",
+  "Volumes": null,
+  "WorkingDir": "",
+  "Entrypoint": [
+    "/docker-entrypoint.sh"
+  ],
+  "OnBuild": null,
+  "Labels": {
+    "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+  },
+  "StopSignal": "SIGQUIT"
+}

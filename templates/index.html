@@ -1,216 +1,293 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Guardian Lite</title>
+    
+    <!-- CDN Libraries -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/phosphor-icons@1.4.2/src/css/icons.css">
+    <script src="https://unpkg.com/phosphor-icons"></script>
+    
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Guardian Lite 🐳</h1>
-        <p>Lightweight container auto-updater for your Pi.</p>
-
-        <div class="section">
-            <h2>🔧 Telegram Settings</h2>
-            <input id="bot_token" type="password" placeholder="Bot Token" value="{{ config.telegram_bot_token }}">
-            <input id="chat_id" type="password" placeholder="Chat ID" value="{{ config.telegram_chat_id }}">
-        </div>
-
-        <div class="section">
-            <h2>♻️ Global Settings</h2>
-            <label>
-                <input type="checkbox" id="cleanup" {% if config.global.cleanup_unused_images %}checked{% endif %}>
-                Auto cleanup unused images
-            </label>
-            <input type="number" id="keep_last" placeholder="Keep last N images" value="{{ config.global.cleanup_keep_last_n }}">
-
-            <label>
-                <input type="checkbox" id="dry_run" {% if config.global.dry_run %}checked{% endif %}>
-                Dry run (no actual changes)
-            </label>
-
-            <label>
-                Check Interval (minutes): <input type="number" id="interval" value="{{ config.global.check_interval_minutes }}">
-            </label>
-        </div>
-
-        <div class="section">
-            <h2>⏱️ Cron Scheduler</h2>
-            <label>
-                <input type="checkbox" id="cron_enabled" {% if config.cron.enabled %}checked{% endif %}>
-                Enable automatic scheduling
-            </label>
-            
-            <div id="cron-settings" style="margin-top: 15px;">
-                <div class="cron-option">
-                    <label>
-                        <input type="radio" name="cron_frequency" value="hourly" checked>
-                        Every Hour
-                    </label>
-                </div>
-                <div class="cron-option">
-                    <label>
-                        <input type="radio" name="cron_frequency" value="daily">
-                        Daily at: 
-                        <select id="daily_hour">
-                            <option value="0">12:00 AM</option>
-                            <option value="1">1:00 AM</option>
-                            <option value="2">2:00 AM</option>
-                            <option value="3">3:00 AM</option>
-                            <option value="4">4:00 AM</option>
-                            <option value="5">5:00 AM</option>
-                            <option value="6">6:00 AM</option>
-                            <option value="7">7:00 AM</option>
-                            <option value="8">8:00 AM</option>
-                            <option value="9">9:00 AM</option>
-                            <option value="10">10:00 AM</option>
-                            <option value="11">11:00 AM</option>
-                            <option value="12">12:00 PM</option>
-                            <option value="13">1:00 PM</option>
-                            <option value="14">2:00 PM</option>
-                            <option value="15">3:00 PM</option>
-                            <option value="16">4:00 PM</option>
-                            <option value="17">5:00 PM</option>
-                            <option value="18">6:00 PM</option>
-                            <option value="19">7:00 PM</option>
-                            <option value="20">8:00 PM</option>
-                            <option value="21">9:00 PM</option>
-                            <option value="22">10:00 PM</option>
-                            <option value="23">11:00 PM</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="cron-option">
-                    <label>
-                        <input type="radio" name="cron_frequency" value="weekly">
-                        Weekly on: 
-                        <select id="weekly_day">
-                            <option value="0">Sunday</option>
-                            <option value="1">Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
-                        </select>
-                        at 
-                        <select id="weekly_hour">
-                            <option value="0">12:00 AM</option>
-                            <option value="1">1:00 AM</option>
-                            <option value="2">2:00 AM</option>
-                            <option value="3">3:00 AM</option>
-                            <option value="4">4:00 AM</option>
-                            <option value="5">5:00 AM</option>
-                            <option value="6">6:00 AM</option>
-                            <option value="7">7:00 AM</option>
-                            <option value="8">8:00 AM</option>
-                            <option value="9">9:00 AM</option>
-                            <option value="10">10:00 AM</option>
-                            <option value="11">11:00 AM</option>
-                            <option value="12">12:00 PM</option>
-                            <option value="13">1:00 PM</option>
-                            <option value="14">2:00 PM</option>
-                            <option value="15">3:00 PM</option>
-                            <option value="16">4:00 PM</option>
-                            <option value="17">5:00 PM</option>
-                            <option value="18">6:00 PM</option>
-                            <option value="19">7:00 PM</option>
-                            <option value="20">8:00 PM</option>
-                            <option value="21">9:00 PM</option>
-                            <option value="22">10:00 PM</option>
-                            <option value="23">11:00 PM</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="cron-option">
-                    <label>
-                        <input type="radio" name="cron_frequency" value="custom">
-                        Custom interval: Every 
-                        <input type="number" id="custom_minutes" min="1" max="59" value="30" style="width: 60px;">
-                        minutes
-                    </label>
-                </div>
-                <div class="cron-option">
-                    <label>
-                        <input type="radio" name="cron_frequency" value="manual">
-                        Manual cron expression: 
-                        <input type="text" id="manual_cron" placeholder="0 */1 * * *" style="width: 200px;">
-                        <small><a href="https://crontab.guru" target="_blank">Help</a></small>
-                    </label>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="ph-shield-check"></i>
+                    <span>Guardian</span>
                 </div>
             </div>
             
-            <div id="cron-preview" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-family: monospace;">
-                <strong>Generated Cron:</strong> <span id="cron-expression">{{ config.cron.schedule }}</span>
+            <div class="nav-section">
+                <div class="nav-item active" data-section="dashboard">
+                    <i class="ph-house"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-section="containers">
+                    <i class="ph-package"></i>
+                    <span>Containers</span>
+                </div>
+                <div class="nav-item" data-section="settings">
+                    <i class="ph-gear-six"></i>
+                    <span>Settings</span>
+                </div>
+                <div class="nav-item" data-section="logs">
+                    <i class="ph-terminal-window"></i>
+                    <span>Logs</span>
+                </div>
             </div>
-        </div>
-
-        <div class="section">
-            <h2>🐳 Container Monitoring</h2>
             
-            <!-- Container Discovery -->
-            <div class="container-discovery">
-                <h3>📋 Running Containers</h3>
-                <div class="container-controls">
-                    <button id="refresh-containers" class="refresh-btn">🔄 Refresh</button>
-                    <input type="text" id="container-search" placeholder="🔍 Search containers..." class="search-input">
-                </div>
-                <div id="running-containers" class="running-containers">
-                    <div class="loading">Loading containers...</div>
-                </div>
-                <div id="container-pagination" class="pagination" style="display: none;">
-                    <button id="prev-page" class="page-btn" disabled>← Previous</button>
-                    <span id="page-info" class="page-info">Page 1 of 1</span>
-                    <button id="next-page" class="page-btn" disabled>Next →</button>
-                </div>
+            <div class="sidebar-footer">
+                <button class="action-button primary" id="run-now">
+                    <i class="ph-play-circle"></i>
+                    <span>Run Update</span>
+                </button>
             </div>
+        </nav>
 
-            <!-- Selected Containers -->
-            <div class="selected-containers">
-                <h3>✅ Selected for Monitoring</h3>
-                <div id="selected-containers-list" class="selected-list">
-                    {% for c in config.containers %}
-                    <div class="selected-item" data-name="{{ c.name }}">
-                        <div class="container-info">
-                            <strong>{{ c.name }}</strong>
-                            <span class="image">{{ c.image }}</span>
-                            {% if c.health_check_url %}
-                            <span class="health">Health: {{ c.health_check_url }}</span>
-                            {% endif %}
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-left">
+                    <h1 class="page-title">Guardian Lite</h1>
+                    <p class="page-subtitle">Container Auto-Updater</p>
+                </div>
+                <div class="header-right">
+                    <button class="icon-button" id="refresh-all">
+                        <i class="ph-arrow-clockwise"></i>
+                    </button>
+                    <button class="icon-button" id="save-config">
+                        <i class="ph-floppy-disk"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card gradient-1">
+                        <div class="stat-icon">
+                            <i class="ph-package"></i>
                         </div>
-                        <div class="container-options">
-                            <label class="option">
-                                <input type="checkbox" class="auto_update" {% if c.auto_update %}checked{% endif %}>
-                                Auto Update
-                            </label>
-                            <label class="option">
-                                <input type="checkbox" class="rollback" {% if c.rollback_on_failure %}checked{% endif %}>
-                                Rollback on Failure
-                            </label>
-                            <label class="option">
-                                <input type="checkbox" class="enabled" {% if c.enabled %}checked{% endif %}>
-                                Enabled
-                            </label>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-containers">0</div>
+                            <div class="stat-label">Total Containers</div>
                         </div>
-                        <button class="remove-selected">×</button>
                     </div>
-                    {% endfor %}
+                    
+                    <div class="stat-card gradient-2">
+                        <div class="stat-icon">
+                            <i class="ph-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="monitored-containers">0</div>
+                            <div class="stat-label">Monitored</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card gradient-3">
+                        <div class="stat-icon">
+                            <i class="ph-arrow-counter-clockwise"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="last-update">Never</div>
+                            <div class="stat-label">Last Update</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card gradient-4">
+                        <div class="stat-icon">
+                            <i class="ph-lightning"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="auto-updates">0</div>
+                            <div class="stat-label">Auto Updates</div>
+                        </div>
+                    </div>
                 </div>
-                <div id="no-containers" class="no-containers" {% if config.containers %}style="display: none;"{% endif %}>
-                    <p>No containers selected for monitoring yet.</p>
-                    <p>Select containers from the running list above to start monitoring them.</p>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <h2 class="section-title">Quick Actions</h2>
+                    <div class="action-cards">
+                        <div class="action-card" onclick="showSection('containers')">
+                            <i class="ph-plus-circle"></i>
+                            <span>Add Container</span>
+                        </div>
+                        <div class="action-card" onclick="showSection('settings')">
+                            <i class="ph-gear-six"></i>
+                            <span>Configure</span>
+                        </div>
+                        <div class="action-card" onclick="showSection('logs')">
+                            <i class="ph-terminal-window"></i>
+                            <span>View Logs</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <div class="actions">
-            <button id="save">💾 Save & Apply</button>
-            <button id="run-now">🚀 Run Update Now</button>
-        </div>
+            <!-- Containers Section -->
+            <section id="containers-section" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-title">Container Management</h2>
+                    <div class="search-bar">
+                        <i class="ph-magnifying-glass"></i>
+                        <input type="text" id="container-search" placeholder="Search containers...">
+                    </div>
+                </div>
 
-        <div class="section">
-            <h2>📜 Recent Logs</h2>
-            <pre id="logs">Loading...</pre>
-        </div>
+                <!-- Available Containers -->
+                <div class="subsection">
+                    <h3 class="subsection-title">Available Containers</h3>
+                    <div id="available-containers" class="container-grid">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <!-- Monitored Containers -->
+                <div class="subsection">
+                    <h3 class="subsection-title">Monitored Containers</h3>
+                    <div id="monitored-containers-list" class="monitored-grid">
+                        {% for c in config.containers %}
+                        <div class="monitored-card" data-name="{{ c.name }}">
+                            <div class="card-header">
+                                <div class="card-title">{{ c.name }}</div>
+                                <button class="remove-btn" onclick="removeContainer('{{ c.name }}')">
+                                    <i class="ph-x"></i>
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-info">
+                                    <span class="info-label">Image</span>
+                                    <span class="info-value">{{ c.image }}</span>
+                                </div>
+                                <div class="toggle-group">
+                                    <label class="toggle">
+                                        <input type="checkbox" class="auto-update-toggle" {% if c.auto_update %}checked{% endif %}>
+                                        <span class="toggle-slider"></span>
+                                        <span class="toggle-label">Auto Update</span>
+                                    </label>
+                                    <label class="toggle">
+                                        <input type="checkbox" class="rollback-toggle" {% if c.rollback_on_failure %}checked{% endif %}>
+                                        <span class="toggle-slider"></span>
+                                        <span class="toggle-label">Auto Rollback</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section">
+                <h2 class="section-title">Settings</h2>
+                
+                <div class="settings-grid">
+                    <!-- Telegram Settings -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <i class="ph-telegram-logo"></i>
+                            <h3>Telegram Notifications</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="input-group">
+                                <label>Bot Token</label>
+                                <input type="password" id="bot_token" value="{{ config.telegram_bot_token }}" placeholder="Enter bot token">
+                            </div>
+                            <div class="input-group">
+                                <label>Chat ID</label>
+                                <input type="password" id="chat_id" value="{{ config.telegram_chat_id }}" placeholder="Enter chat ID">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Global Settings -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <i class="ph-globe"></i>
+                            <h3>Global Configuration</h3>
+                        </div>
+                        <div class="card-body">
+                            <label class="toggle">
+                                <input type="checkbox" id="cleanup" {% if config.global.cleanup_unused_images %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Auto cleanup unused images</span>
+                            </label>
+                            
+                            <div class="input-group">
+                                <label>Keep last N images</label>
+                                <input type="number" id="keep_last" value="{{ config.global.cleanup_keep_last_n }}" min="1" max="10">
+                            </div>
+                            
+                            <label class="toggle">
+                                <input type="checkbox" id="dry_run" {% if config.global.dry_run %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Dry run mode</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Scheduler Settings -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <i class="ph-clock"></i>
+                            <h3>Schedule</h3>
+                        </div>
+                        <div class="card-body">
+                            <label class="toggle">
+                                <input type="checkbox" id="cron_enabled" {% if config.cron.enabled %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Enable automatic scheduling</span>
+                            </label>
+                            
+                            <div class="schedule-options">
+                                <div class="radio-group">
+                                    <label class="radio">
+                                        <input type="radio" name="schedule" value="hourly" checked>
+                                        <span>Every hour</span>
+                                    </label>
+                                    <label class="radio">
+                                        <input type="radio" name="schedule" value="daily">
+                                        <span>Daily</span>
+                                    </label>
+                                    <label class="radio">
+                                        <input type="radio" name="schedule" value="custom">
+                                        <span>Custom</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="schedule-preview">
+                                    <code id="cron-expression">{{ config.cron.schedule }}</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs Section -->
+            <section id="logs-section" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-title">Activity Logs</h2>
+                    <button class="text-button" id="clear-logs">Clear</button>
+                </div>
+                <div class="logs-container">
+                    <div id="logs-output">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script src="/static/script.js"></script>

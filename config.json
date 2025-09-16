@@ -1,24 +1,14 @@
 {
-  "telegram_bot_token": "",
+  "telegram_bot_token": "admin123",
   "telegram_chat_id": "",
   "global": {
     "cleanup_unused_images": true,
     "cleanup_keep_last_n": 3,
-    "dry_run": false,
-    "check_interval_minutes": 60
+    "dry_run": false
   },
   "cron": {
     "enabled": true,
     "schedule": "0 */1 * * *"
   },
-  "containers": [
-    {
-      "name": "nginx-old",
-      "image": "nginx:latest",
-      "health_check_url": "http://localhost:8082",
-      "auto_update": true,
-      "rollback_on_failure": true,
-      "enabled": true
-    }
-  ]
+  "containers": []
 }
