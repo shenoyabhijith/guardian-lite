@@ -218,7 +218,8 @@ def save_config(config):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    config = load_config()
+    return render_template('index.html', config=config)
 
 @app.route('/config')
 def get_config():
@@ -242,18 +243,50 @@ def run_now():
     try:
         data = request.get_json()
         container_name = data.get('name')
+        target_tag = data.get('target_tag')
         
         if not container_name:
             return jsonify({"status": "error", "message": "Container name required"})
         
-        # Run the update script
-        result = subprocess.run(['python3', 'guardian.py'], 
-                              capture_output=True, text=True, timeout=300)
-        
-        if result.returncode == 0:
-            return jsonify({"status": "success", "message": "Update completed successfully"})
+        if target_tag:
+            # Update specific container to target tag
+            import guardian
+            config = guardian.load_config()
+            
+            # Find the container in config
+            container_config = None
+            for c in config.get('containers', []):
+                if c['name'] == container_name:
+                    container_config = c
+                    break
+            
+            if not container_config:
+                return jsonify({"status": "error", "message": f"Container {container_name} not found in config"})
+            
+            # Update the image to target tag
+            original_image = container_config['image']
+            image_base = original_image.split(':')[0] if ':' in original_image else original_image
+            container_config['image'] = f"{image_base}:{target_tag}"
+            
+            # Save updated config
+            guardian.save_config(config)
+            
+            # Run update for this specific container
+            result = guardian.update_container(container_config)
+            
+            if result:
+                return jsonify({"status": "success", "message": f"Successfully updated {container_name} to {target_tag}"})
+            else:
+                return jsonify({"status": "error", "message": f"Failed to update {container_name}"})
         else:
-            return jsonify({"status": "error", "message": f"Update failed: {result.stderr}"})
+            # Run the full update script
+            result = subprocess.run(['python3', 'guardian.py'], 
+                                  capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                return jsonify({"status": "success", "message": "Update completed successfully"})
+            else:
+                return jsonify({"status": "error", "message": f"Update failed: {result.stderr}"})
     
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
@@ -428,4 +461,4 @@ def clear_logs():
         })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8082, debug=False)
+    app.run(host='0.0.0.0', port=8082, debug=True)

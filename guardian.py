@@ -278,10 +278,13 @@ def update_container(container_config):
                 restart_policy={"Name": "unless-stopped"}
             )
         else:
-            # Fallback to subprocess - need to get port mapping
+            # Fallback to subprocess - get port mapping from config
             port_mapping = ""
-            if name == "nginx-old":
-                port_mapping = "-p 8082:80"
+            ports = container_config.get('ports', [])
+            if ports:
+                for port in ports:
+                    if ':' in port:
+                        port_mapping += f" -p {port}"
             
             cmd = f"docker run -d --name {name} --restart unless-stopped {port_mapping} {image}"
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)

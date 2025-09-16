@@ -10,5 +10,16 @@
     "enabled": true,
     "schedule": "0 */1 * * *"
   },
-  "containers": []
+  "containers": [
+    {
+      "name": "test-nginx",
+      "image": "nginx:stable-perl",
+      "health_check_url": "http://localhost:80",
+      "backup_enabled": true,
+      "auto_update": true,
+      "ports": [
+        "80:80"
+      ]
+    }
+  ]
 }

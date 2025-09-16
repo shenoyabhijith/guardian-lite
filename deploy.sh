@@ -13,9 +13,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Project configuration
-PROJECT_NAME="guardian-"
+PROJECT_NAME="guardian"
 CONTAINER_NAME="guardian"
-IMAGE_NAME="guardian-"
+IMAGE_NAME="guardian"
 PORT="8082"
 
 # Function to print colored output

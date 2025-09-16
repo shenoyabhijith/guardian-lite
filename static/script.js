@@ -91,6 +91,11 @@ class Guardian {
                                         <span class="version-label">Latest:</span>
                                         <span class="version-tag latest">${latestTag}</span>
                                     </div>
+                                    <div class="update-actions">
+                                        <button class="update-btn" onclick="guardian.updateContainer('${c.name}', '${c.image}', '${latestTag}')">
+                                            <i class="ph-arrow-up"></i> Update to ${latestTag}
+                                        </button>
+                                    </div>
                                 ` : ''}
                             </div>
                         ` : ''}
@@ -120,6 +125,34 @@ class Guardian {
         this.renderMonitoredContainers();
         this.showNotification(`Removed ${name} from monitoring`, 'info');
         this.updateStats();
+    }
+
+    async updateContainer(name, currentImage, targetTag) {
+        try {
+            // Show confirmation dialog
+            const confirmed = confirm(`Are you sure you want to update ${name} from ${currentImage} to ${targetTag}?`);
+            if (!confirmed) return;
+
+            this.showNotification(`Updating ${name} to ${targetTag}...`, 'info');
+
+            const response = await fetch('/run-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, target_tag: targetTag })
+            });
+
+            if (response.ok) {
+                this.showNotification(`Successfully updated ${name} to ${targetTag}`, 'success');
+                // Reload containers to show updated information
+                setTimeout(() => this.loadContainers(), 2000);
+            } else {
+                const error = await response.json();
+                throw new Error(error.message || 'Update failed');
+            }
+        } catch (error) {
+            console.error('Failed to update container:', error);
+            this.showNotification(`Failed to update ${name}: ${error.message}`, 'error');
+        }
     }
 
     renderMonitoredContainers() {
