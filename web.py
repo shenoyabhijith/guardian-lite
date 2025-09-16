@@ -40,6 +40,48 @@ for method_info in docker_methods:
 if docker_client is None:
     print("All Docker client initialization methods failed. Using subprocess fallback.")
 
+def get_actual_image_tag(image_name):
+    """Get the actual image tag from image name, handling 'latest' tag resolution"""
+    try:
+        # If it's not 'latest', return as is
+        if ':' not in image_name or not image_name.endswith(':latest'):
+            return image_name
+        
+        # For 'latest' tag, get the actual image ID and find the corresponding tag
+        if docker_client:
+            try:
+                image = docker_client.images.get(image_name)
+                # Get all tags for this image
+                if image.tags:
+                    # Find the most specific tag (not 'latest')
+                    for tag in image.tags:
+                        if not tag.endswith(':latest'):
+                            return tag
+                    # If only 'latest' tag exists, return it
+                    return image.tags[0]
+            except:
+                pass
+        
+        # Fallback: Use subprocess to get actual image info
+        try:
+            result = subprocess.run(['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}\t{{.ID}}'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                for line in result.stdout.strip().split('\n'):
+                    if line and '\t' in line:
+                        tag, image_id = line.split('\t', 1)
+                        if image_name.split(':')[0] in tag and not tag.endswith(':latest'):
+                            return tag
+        except:
+            pass
+        
+        # If all else fails, return original
+        return image_name
+        
+    except Exception as e:
+        print(f"Error getting actual image tag for {image_name}: {e}")
+        return image_name
+
 def check_image_updates(image_name):
     """Check for available updates for a Docker image"""
     try:
@@ -88,11 +130,50 @@ def check_image_updates(image_name):
                 # Sort tags by last_updated (newest first)
                 tags.sort(key=lambda x: x['last_updated'], reverse=True)
                 
+                # Find the actual latest tag (either 'latest' or the most recent specific version)
+                latest_tag = None
+                has_update = False
+                
+                # If current tag is 'latest', handle it specially
+                if current_tag == 'latest':
+                    # Find the 'latest' tag in the results
+                    latest_tag_info = next((tag for tag in tags if tag['name'] == 'latest'), None)
+                    if latest_tag_info:
+                        latest_tag = 'latest'
+                        # For 'latest' tag, we consider it up-to-date unless there's a newer specific version
+                        # But in practice, 'latest' should be considered current
+                        has_update = False  # 'latest' is always considered current
+                    else:
+                        # No 'latest' tag found in API results
+                        # This can happen if 'latest' tag doesn't exist or is filtered out
+                        # In this case, we assume 'latest' is current and don't show updates
+                        latest_tag = 'latest'
+                        has_update = False  # Assume 'latest' is current
+                else:
+                    # Current tag is a specific version, check against latest or newer versions
+                    latest_tag_info = next((tag for tag in tags if tag['name'] == 'latest'), None)
+                    if latest_tag_info:
+                        latest_tag = 'latest'
+                        # Compare current tag's update time with latest
+                        current_tag_info = next((tag for tag in tags if tag['name'] == current_tag), None)
+                        if current_tag_info:
+                            has_update = latest_tag_info['last_updated'] > current_tag_info['last_updated']
+                        else:
+                            has_update = True  # Current tag not found in available tags
+                    else:
+                        # No 'latest' tag, compare with most recent tag
+                        latest_tag = tags[0]['name'] if tags else current_tag
+                        current_tag_info = next((tag for tag in tags if tag['name'] == current_tag), None)
+                        if current_tag_info:
+                            has_update = tags[0]['last_updated'] > current_tag_info['last_updated']
+                        else:
+                            has_update = True
+                
                 return {
                     'current_tag': current_tag,
                     'available_tags': tags[:10],  # Return top 10 tags
-                    'has_update': current_tag != tags[0]['name'] if tags else False,
-                    'latest_tag': tags[0]['name'] if tags else current_tag
+                    'has_update': has_update,
+                    'latest_tag': latest_tag
                 }
         
         return None
@@ -137,32 +218,43 @@ def save_config(config):
 
 @app.route('/')
 def index():
-    config = load_config()
-    return render_template('index.html', config=config)
+    return render_template('index.html')
 
-@app.route('/save', methods=['POST'])
-def save():
-    data = request.json
-    save_config(data)
-    # Auto-install cron if enabled
-    setup_cron(data.get('cron', {}))
-    return jsonify({"status": "saved"})
+@app.route('/config')
+def get_config():
+    try:
+        config = load_config()
+        return jsonify(config)
+    except FileNotFoundError:
+        return jsonify({"containers": []})
+
+@app.route('/config', methods=['POST'])
+def update_config():
+    try:
+        config = request.get_json()
+        save_config(config)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/run-now', methods=['POST'])
 def run_now():
-    """Run guardian update immediately and return status"""
     try:
-        # Start guardian.py in background
-        process = subprocess.Popen(['python', 'guardian.py'], 
-                                 stdout=subprocess.PIPE, 
-                                 stderr=subprocess.PIPE,
-                                 text=True)
+        data = request.get_json()
+        container_name = data.get('name')
         
-        # Log the manual trigger
-        with open('logs/guardian.log', 'a') as f:
-            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - INFO - Manual update triggered via web interface\n")
+        if not container_name:
+            return jsonify({"status": "error", "message": "Container name required"})
         
-        return jsonify({"status": "started", "message": "Update process started in background"})
+        # Run the update script
+        result = subprocess.run(['python3', 'guardian.py'], 
+                              capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            return jsonify({"status": "success", "message": "Update completed successfully"})
+        else:
+            return jsonify({"status": "error", "message": f"Update failed: {result.stderr}"})
+    
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
@@ -186,12 +278,14 @@ def get_containers():
                 
                 # Get update information
                 image_name = container.image.tags[0] if container.image.tags else container.image.short_id
-                update_info = get_container_update_info(container.name, image_name)
+                # Get the actual image tag (resolve 'latest' to real version)
+                actual_image_name = get_actual_image_tag(image_name)
+                update_info = get_container_update_info(container.name, actual_image_name)
                 
                 containers.append({
                     'id': container.short_id,
                     'name': container.name,
-                    'image': image_name,
+                    'image': actual_image_name,  # Show actual image tag instead of 'latest'
                     'status': container.status,
                     'ports': ports,
                     'created': container.attrs['Created'][:19],
@@ -221,12 +315,14 @@ def get_containers():
                         
                         # Get update information
                         image_name = container_data['Image']
-                        update_info = get_container_update_info(container_data['Names'], image_name)
+                        # Get the actual image tag (resolve 'latest' to real version)
+                        actual_image_name = get_actual_image_tag(image_name)
+                        update_info = get_container_update_info(container_data['Names'], actual_image_name)
                         
                         containers.append({
                             'id': container_data['ID'][:12],
                             'name': container_data['Names'],
-                            'image': image_name,
+                            'image': actual_image_name,  # Show actual image tag instead of 'latest'
                             'status': container_data['Status'],
                             'ports': ports,
                             'created': container_data['CreatedAt'][:19],
@@ -248,104 +344,88 @@ def get_containers():
 @app.route('/status')
 def status():
     """Get recent logs and system status"""
-    logs = []
-    
-    # Read guardian logs
     try:
-        with open('logs/guardian.log', 'r') as f:
-            lines = f.readlines()[-20:]  # Last 20 lines
-            logs.extend([line.strip() for line in lines if line.strip()])
-    except:
-        logs.append("No guardian logs yet.")
-    
-    # Read cron logs if they exist
-    try:
-        with open('logs/cron.log', 'r') as f:
-            cron_lines = f.readlines()[-10:]  # Last 10 cron lines
-            logs.extend([f"[CRON] {line.strip()}" for line in cron_lines if line.strip()])
-    except:
-        pass
-    
-    # Add current system status
-    logs.append(f"[SYSTEM] Last check: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Get container status
-    container_status = []
-    if docker_client:
+        # Read recent logs
+        logs = []
+        log_files = ['logs/guardian.log', 'logs/cron.log']
+        
+        for log_file in log_files:
+            if os.path.exists(log_file):
+                try:
+                    with open(log_file, 'r') as f:
+                        lines = f.readlines()
+                        # Get last 50 lines
+                        recent_lines = lines[-50:] if len(lines) > 50 else lines
+                        for line in recent_lines:
+                            logs.append({
+                                'file': log_file,
+                                'content': line.strip(),
+                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                except Exception as e:
+                    logs.append({
+                        'file': log_file,
+                        'content': f"Error reading log file: {e}",
+                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    })
+        
+        # Get system status
+        system_status = {
+            'docker_running': False,
+            'last_check': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        # Check if Docker is running
         try:
-            for container in docker_client.containers.list():
-                container_status.append({
-                    'name': container.name,
-                    'status': container.status,
-                    'image': container.image.tags[0] if container.image.tags else container.image.short_id
-                })
+            if docker_client:
+                docker_client.ping()
+                system_status['docker_running'] = True
+            else:
+                # Try subprocess fallback
+                result = subprocess.run(['docker', 'version'], 
+                                      capture_output=True, text=True, timeout=5)
+                system_status['docker_running'] = result.returncode == 0
         except:
-            pass
-    
-    return jsonify({
-        "logs": logs,
-        "container_status": container_status,
-        "timestamp": datetime.now().isoformat()
-    })
+            system_status['docker_running'] = False
+        
+        return jsonify({
+            'logs': logs,
+            'system_status': system_status
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'logs': [{'file': 'error', 'content': f"Error getting status: {e}", 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}],
+            'system_status': {'docker_running': False, 'last_check': datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        })
 
 @app.route('/clear-logs', methods=['POST'])
 def clear_logs():
-    """Clear all log files"""
+    """Clear log files"""
     try:
+        log_files = ['logs/guardian.log', 'logs/cron.log']
         cleared_files = []
         
-        # Clear guardian logs
-        try:
-            with open('logs/guardian.log', 'w') as f:
-                f.write('')
-            cleared_files.append('guardian.log')
-        except Exception as e:
-            print(f"Failed to clear guardian.log: {e}")
-        
-        # Clear cron logs if they exist
-        try:
-            if os.path.exists('logs/cron.log'):
-                with open('logs/cron.log', 'w') as f:
-                    f.write('')
-                cleared_files.append('cron.log')
-        except Exception as e:
-            print(f"Failed to clear cron.log: {e}")
-        
-        # Add a new entry indicating logs were cleared
-        try:
-            with open('logs/guardian.log', 'a') as f:
-                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - INFO - Logs cleared by user\n")
-        except Exception as e:
-            print(f"Failed to add clear log entry: {e}")
+        for log_file in log_files:
+            if os.path.exists(log_file):
+                try:
+                    with open(log_file, 'w') as f:
+                        f.write('')  # Clear the file
+                    cleared_files.append(log_file)
+                except Exception as e:
+                    print(f"Error clearing {log_file}: {e}")
         
         return jsonify({
-            'status': 'success', 
-            'message': f'Logs cleared successfully. Cleared files: {", ".join(cleared_files)}'
+            'status': 'success',
+            'message': f'Cleared {len(cleared_files)} log files',
+            'files': cleared_files
         })
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-def setup_cron(cron_config):
-    if not cron_config.get('enabled', False):
-        # Remove existing cron
-        subprocess.run("crontab -l | grep -v 'guardian.py' | crontab -", shell=True)
-        return
-
-    schedule = cron_config.get('schedule', '0 */1 * * *')
-    cmd = f"cd /app && python guardian.py >> logs/cron.log 2>&1"
-    cron_line = f"{schedule} {cmd}"
-
-    # Get current crontab
-    result = subprocess.run("crontab -l", shell=True, capture_output=True, text=True)
-    current = result.stdout.splitlines() if result.returncode == 0 else []
-
-    # Remove old guardian entries
-    new_cron = [line for line in current if 'guardian.py' not in line]
-    new_cron.append(cron_line)
-
-    # Write back
-    cron_text = "\n".join(new_cron) + "\n"
-    subprocess.run("crontab -", shell=True, input=cron_text, text=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to clear logs: {e}'
+        })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8082, debug=False)
