@@ -4,6 +4,8 @@ import json
 import subprocess
 import os
 import docker
+import requests
+import re
 from datetime import datetime
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -37,6 +39,93 @@ for method_info in docker_methods:
 
 if docker_client is None:
     print("All Docker client initialization methods failed. Using subprocess fallback.")
+
+def check_image_updates(image_name):
+    """Check for available updates for a Docker image"""
+    try:
+        # Parse image name to get registry, namespace, and repository
+        if '/' in image_name:
+            parts = image_name.split('/')
+            if len(parts) == 2:
+                namespace, repo = parts
+                registry = 'docker.io'
+            elif len(parts) == 3:
+                registry, namespace, repo = parts
+            else:
+                return None
+        else:
+            registry = 'docker.io'
+            namespace = 'library'
+            repo = image_name
+        
+        # Remove tag if present
+        if ':' in repo:
+            repo, current_tag = repo.split(':', 1)
+        else:
+            current_tag = 'latest'
+        
+        # For Docker Hub (docker.io)
+        if registry == 'docker.io':
+            api_url = f"https://hub.docker.com/v2/repositories/{namespace}/{repo}/tags"
+            
+            response = requests.get(api_url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                tags = []
+                
+                for result in data.get('results', []):
+                    tag_name = result.get('name', '')
+                    if tag_name and not tag_name.startswith('sha256'):
+                        # Get tag details
+                        tag_info = {
+                            'name': tag_name,
+                            'last_updated': result.get('last_updated', ''),
+                            'size': result.get('full_size', 0),
+                            'is_latest': tag_name == 'latest'
+                        }
+                        tags.append(tag_info)
+                
+                # Sort tags by last_updated (newest first)
+                tags.sort(key=lambda x: x['last_updated'], reverse=True)
+                
+                return {
+                    'current_tag': current_tag,
+                    'available_tags': tags[:10],  # Return top 10 tags
+                    'has_update': current_tag != tags[0]['name'] if tags else False,
+                    'latest_tag': tags[0]['name'] if tags else current_tag
+                }
+        
+        return None
+        
+    except Exception as e:
+        print(f"Error checking image updates for {image_name}: {e}")
+        return None
+
+def get_container_update_info(container_name, image_name):
+    """Get update information for a specific container"""
+    try:
+        # Get current image ID
+        current_image_id = None
+        if docker_client:
+            try:
+                container = docker_client.containers.get(container_name)
+                current_image_id = container.image.id
+            except:
+                pass
+        
+        # Check for updates
+        update_info = check_image_updates(image_name)
+        
+        return {
+            'container_name': container_name,
+            'image_name': image_name,
+            'current_image_id': current_image_id,
+            'update_info': update_info
+        }
+        
+    except Exception as e:
+        print(f"Error getting update info for {container_name}: {e}")
+        return None
 
 def load_config():
     with open(CONFIG_PATH, 'r') as f:
@@ -95,13 +184,18 @@ def get_containers():
                             for p in port_info:
                                 ports.append(f"{p['HostPort']}:{p['PrivatePort']}")
                 
+                # Get update information
+                image_name = container.image.tags[0] if container.image.tags else container.image.short_id
+                update_info = get_container_update_info(container.name, image_name)
+                
                 containers.append({
                     'id': container.short_id,
                     'name': container.name,
-                    'image': container.image.tags[0] if container.image.tags else container.image.short_id,
+                    'image': image_name,
                     'status': container.status,
                     'ports': ports,
-                    'created': container.attrs['Created'][:19]
+                    'created': container.attrs['Created'][:19],
+                    'update_info': update_info
                 })
             print(f"Successfully retrieved {len(containers)} containers from Docker client")
             return jsonify({"containers": containers})
@@ -125,13 +219,18 @@ def get_containers():
                                 if port.strip() and '->' in port:
                                     ports.append(port.strip())
                         
+                        # Get update information
+                        image_name = container_data['Image']
+                        update_info = get_container_update_info(container_data['Names'], image_name)
+                        
                         containers.append({
                             'id': container_data['ID'][:12],
                             'name': container_data['Names'],
-                            'image': container_data['Image'],
+                            'image': image_name,
                             'status': container_data['Status'],
                             'ports': ports,
-                            'created': container_data['CreatedAt'][:19]
+                            'created': container_data['CreatedAt'][:19],
+                            'update_info': update_info
                         })
                     except json.JSONDecodeError:
                         continue

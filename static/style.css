@@ -624,6 +624,30 @@ body {
     border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
+.container-card .header-badges {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+}
+
+.container-card .update-badge {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(255, 149, 0, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(255, 149, 0, 0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
 .container-card .container-header h4 {
     font-size: 16px;
     font-weight: 600;
@@ -672,6 +696,53 @@ body {
     border-radius: var(--radius-sm);
     border: 1px solid rgba(0, 0, 0, 0.04);
     display: inline-block;
+    margin-bottom: var(--spacing-sm);
+}
+
+.container-card .version-info {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.container-card .version-current,
+.container-card .version-latest {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.container-card .version-current:last-child,
+.container-card .version-latest:last-child {
+    margin-bottom: 0;
+}
+
+.container-card .version-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.container-card .version-tag {
+    font-size: 12px;
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    color: var(--text-primary);
+}
+
+.container-card .version-tag.latest {
+    background: rgba(52, 199, 89, 0.1);
+    color: var(--success);
+    border-color: rgba(52, 199, 89, 0.2);
+    font-weight: 600;
 }
 
 .container-card .add-container-btn {

@@ -60,23 +60,47 @@ class GuardianLite {
         const container = document.getElementById('available-containers');
         if (!container) return;
 
-        container.innerHTML = this.containers.map(c => `
-            <div class="container-card" data-name="${c.name}">
-                <div class="container-header">
-                    <h4>${c.name}</h4>
-                    <span class="status-badge ${c.status.includes('Up') ? 'success' : 'warning'}">
-                        ${c.status}
-                    </span>
+        container.innerHTML = this.containers.map(c => {
+            const updateInfo = c.update_info?.update_info;
+            const hasUpdate = updateInfo?.has_update;
+            const latestTag = updateInfo?.latest_tag;
+            const currentTag = updateInfo?.current_tag;
+            
+            return `
+                <div class="container-card" data-name="${c.name}">
+                    <div class="container-header">
+                        <h4>${c.name}</h4>
+                        <div class="header-badges">
+                            <span class="status-badge ${c.status.includes('Up') ? 'success' : 'warning'}">
+                                ${c.status}
+                            </span>
+                            ${hasUpdate ? '<span class="update-badge">Update Available</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="container-info">
+                        <p class="image-name">${c.image}</p>
+                        <p class="container-id">${c.id.substring(0, 12)}</p>
+                        ${updateInfo ? `
+                            <div class="version-info">
+                                <div class="version-current">
+                                    <span class="version-label">Current:</span>
+                                    <span class="version-tag">${currentTag || 'latest'}</span>
+                                </div>
+                                ${hasUpdate ? `
+                                    <div class="version-latest">
+                                        <span class="version-label">Latest:</span>
+                                        <span class="version-tag latest">${latestTag}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <button class="add-container-btn" onclick="guardian.addContainer('${c.name}', '${c.image}')">
+                        <i class="ph-plus"></i> Add to Monitor
+                    </button>
                 </div>
-                <div class="container-info">
-                    <p class="image-name">${c.image}</p>
-                    <p class="container-id">${c.id.substring(0, 12)}</p>
-                </div>
-                <button class="add-container-btn" onclick="guardian.addContainer('${c.name}', '${c.image}')">
-                    <i class="ph-plus"></i> Add to Monitor
-                </button>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     addContainer(name, image) {
