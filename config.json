@@ -13,17 +13,9 @@
   },
   "containers": [
     {
-      "name": "guardian",
-      "image": "guardian-lite",
-      "health_check_url": "Auto-detect",
-      "auto_update": true,
-      "rollback_on_failure": true,
-      "enabled": true
-    },
-    {
-      "name": "redis-test",
-      "image": "redis:latest",
-      "health_check_url": "Auto-detect",
+      "name": "nginx-old",
+      "image": "nginx:latest",
+      "health_check_url": "http://localhost:8082",
       "auto_update": true,
       "rollback_on_failure": true,
       "enabled": true

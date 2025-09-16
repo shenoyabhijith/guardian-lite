@@ -25,7 +25,14 @@ logging.basicConfig(
     ]
 )
 
-client = docker.from_env()
+# Initialize Docker client with fallback
+try:
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+    client.ping()
+    logging.info("Docker client initialized successfully")
+except Exception as e:
+    logging.error(f"Docker client initialization failed: {e}")
+    client = None
 
 def load_config():
     with open(CONFIG_PATH, 'r') as f:
@@ -122,47 +129,95 @@ def update_container(container_config):
     name = container_config['name']
     image = container_config['image']
 
-    # Get current image ID
+    # Get current container's image ID using subprocess fallback
+    current_container_image = None
     try:
-        current = client.images.get(image)
-        current_id = current.id
-    except:
-        current_id = None
+        if client:
+            container = client.containers.get(name)
+            current_container_image = container.image.id
+        else:
+            # Fallback to subprocess - get container's image
+            result = subprocess.run(['docker', 'inspect', name, '--format', '{{.Image}}'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                current_container_image = result.stdout.strip()
+    except Exception as e:
+        logging.warning(f"Could not get current container image: {e}")
 
-    # Pull latest
+    # Pull latest using subprocess fallback
     logging.info(f"⬇️ Pulling latest {image}...")
     try:
-        client.images.pull(image)
+        if client:
+            client.images.pull(image)
+        else:
+            # Fallback to subprocess
+            result = subprocess.run(['docker', 'pull', image], 
+                                  capture_output=True, text=True)
+            if result.returncode != 0:
+                raise Exception(f"docker pull failed: {result.stderr}")
     except Exception as e:
         msg = f"❌ Pull failed for `{name}`: `{e}`"
         logging.error(msg)
         send_telegram(msg)
         return False
 
-    new = client.images.get(image)
-    if current_id == new.id:
+    # Get new image ID
+    new_image_id = None
+    try:
+        if client:
+            new = client.images.get(image)
+            new_image_id = new.id
+        else:
+            # Fallback to subprocess
+            result = subprocess.run(['docker', 'images', '--format', '{{.ID}}', image], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                new_image_id = result.stdout.strip()
+    except Exception as e:
+        logging.warning(f"Could not get new image ID: {e}")
+        new_image_id = "unknown"
+    
+    # Compare container's current image with the new image
+    if current_container_image == new_image_id:
         logging.info(f"✅ {name} already up to date.")
         return True
 
     # Backup before update
     backup_container(name)
 
-    # Stop & remove old container
+    # Stop & remove old container using subprocess fallback
     try:
-        old_container = client.containers.get(name)
-        old_container.stop(timeout=10)
-        old_container.remove()
-    except:
-        pass  # OK if not running
+        if client:
+            old_container = client.containers.get(name)
+            old_container.stop(timeout=10)
+            old_container.remove()
+        else:
+            # Fallback to subprocess
+            subprocess.run(['docker', 'stop', name], capture_output=True)
+            subprocess.run(['docker', 'rm', name], capture_output=True)
+    except Exception as e:
+        logging.warning(f"Could not stop/remove old container: {e}")
 
-    # Start new container
+    # Start new container using subprocess fallback
     try:
-        client.containers.run(
-            image=image,
-            name=name,
-            detach=True,
-            restart_policy={"Name": "unless-stopped"}
-        )
+        if client:
+            client.containers.run(
+                image=image,
+                name=name,
+                detach=True,
+                restart_policy={"Name": "unless-stopped"}
+            )
+        else:
+            # Fallback to subprocess - need to get port mapping
+            port_mapping = ""
+            if name == "nginx-old":
+                port_mapping = "-p 8082:80"
+            
+            cmd = f"docker run -d --name {name} --restart unless-stopped {port_mapping} {image}"
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise Exception(f"docker run failed: {result.stderr}")
+        
         logging.info(f"✅ Started updated {name}")
     except Exception as e:
         msg = f"❌ Start failed for `{name}`: `{e}`"
